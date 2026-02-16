@@ -123,10 +123,12 @@
             width: 50px; text-align: center;
             -moz-appearance: textfield; appearance: textfield;
         }
-        .pagination-bar input.page-size-input::-webkit-outer-spin-button,
+.pagination-bar input.page-size-input::-webkit-outer-spin-button,
         .pagination-bar input.page-size-input::-webkit-inner-spin-button {
             -webkit-appearance: none; margin: 0;
         }
+        .deadline-warning { background-color: #ffe6e6 !important; }
+        .deadline-overdue { background-color: #ffcccc !important; }
     </style>
 </head>
 <body>
@@ -461,14 +463,29 @@
             const body = document.getElementById('invoicesBody');
             body.innerHTML = '';
             
-            invoices.forEach(inv => {
+invoices.forEach(inv => {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'data-row-wrapper';
                 wrapper.dataset.invoiceId = inv.id;
                 wrapper.dataset.contractorId = inv.contractor_id;
                 
+                let deadlineClass = '';
+                if (inv.deadline) {
+                    const deadlineDate = new Date(inv.deadline);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    deadlineDate.setHours(0, 0, 0, 0);
+                    const daysDiff = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));
+                    
+                    if (daysDiff < 0) {
+                        deadlineClass = 'deadline-overdue';
+                    } else if (daysDiff <= 10) {
+                        deadlineClass = 'deadline-warning';
+                    }
+                }
+                
                 const row = document.createElement('div');
-                row.className = 'data-row';
+                row.className = 'data-row' + (deadlineClass ? ' ' + deadlineClass : '');
                 row.innerHTML = `
                     <div class="data-cell data-cell-btn"><button class="btn btn-sm btn-outline-primary" onclick="toggleActs(${inv.id}, ${inv.contractor_id})">+</button></div>
                     <div class="data-cell"></div>
