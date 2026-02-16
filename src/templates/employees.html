@@ -61,6 +61,10 @@
         .data-header .data-cell { white-space: nowrap; }
         .action-buttons { display: flex; gap: 4px; flex-wrap: nowrap; }
         .action-buttons .btn { white-space: nowrap; }
+        .data-header .data-cell.sortable { cursor: pointer; user-select: none; }
+        .data-header .data-cell.sortable:hover { background-color: #d3d7db; }
+        .data-header .data-cell.sort-asc::after { content: ' ▲'; }
+        .data-header .data-cell.sort-desc::after { content: ' ▼'; }
     </style>
 </head>
 <body>
@@ -137,13 +141,14 @@
                 <div class="col-md-8">
                     <h6>Список сотрудников</h6>
                     <div>
-                        <div class="data-table" id="employeesTable" style="--cols: minmax(100px, 1.5fr) minmax(80px, 1fr) minmax(100px, 1.5fr) minmax(100px, 1.5fr) minmax(100px, 1.5fr) minmax(160px, 1.5fr);">
+                        <div class="data-table" id="employeesTable" style="--cols: 40px minmax(100px, 1.5fr) minmax(80px, 1fr) minmax(100px, 1.5fr) minmax(100px, 1.5fr) minmax(100px, 1.5fr) minmax(160px, 1.5fr);">
                             <div class="data-header">
-                                <div class="data-cell">Фамилия</div>
-                                <div class="data-cell">Имя</div>
-                                <div class="data-cell">Отчество</div>
-                                <div class="data-cell">Отдел</div>
-                                <div class="data-cell">Должность</div>
+                                <div class="data-cell">№</div>
+                                <div class="data-cell sortable" data-sort="last_name" onclick="sortEmployees('last_name')">Фамилия</div>
+                                <div class="data-cell sortable" data-sort="first_name" onclick="sortEmployees('first_name')">Имя</div>
+                                <div class="data-cell sortable" data-sort="middle_name" onclick="sortEmployees('middle_name')">Отчество</div>
+                                <div class="data-cell sortable" data-sort="department" onclick="sortEmployees('department')">Отдел</div>
+                                <div class="data-cell sortable" data-sort="position" onclick="sortEmployees('position')">Должность</div>
                                 <div class="data-cell">Действия</div>
                             </div>
                             <div id="employeesBody"></div>
@@ -194,6 +199,7 @@
     <script src="/static/js/bootstrap.bundle.min.js"></script>
     <script>
         let employees = [];
+        let currentSort = { field: 'last_name', direction: 'asc' };
         
         function loadEmployees() {
             fetch('/employees/list')
@@ -204,19 +210,42 @@
                 });
         }
         
+        function sortEmployees(field) {
+            if (currentSort.field === field) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.field = field;
+                currentSort.direction = 'asc';
+            }
+            renderEmployees();
+        }
+        
         function renderEmployees() {
             const body = document.getElementById('employeesBody');
             body.innerHTML = '';
             
-            employees.sort((a, b) => (a.last_name || '').localeCompare(b.last_name || ''));
+            document.querySelectorAll('.data-header .data-cell.sortable').forEach(cell => {
+                cell.classList.remove('sort-asc', 'sort-desc');
+                if (cell.dataset.sort === currentSort.field) {
+                    cell.classList.add(currentSort.direction === 'asc' ? 'sort-asc' : 'sort-desc');
+                }
+            });
             
-            employees.forEach(emp => {
+            const sorted = [...employees].sort((a, b) => {
+                const aVal = a[currentSort.field] || '';
+                const bVal = b[currentSort.field] || '';
+                const cmp = aVal.localeCompare(bVal);
+                return currentSort.direction === 'asc' ? cmp : -cmp;
+            });
+            
+            sorted.forEach((emp, index) => {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'data-row-wrapper';
                 
                 const row = document.createElement('div');
                 row.className = 'data-row';
                 row.innerHTML = `
+                    <div class="data-cell">${index + 1}</div>
                     <div class="data-cell">${emp.last_name || ''}</div>
                     <div class="data-cell">${emp.first_name || ''}</div>
                     <div class="data-cell">${emp.middle_name || ''}</div>
