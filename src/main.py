@@ -634,6 +634,7 @@ def update_act(
     act_id: int,
     responsible_manager: Optional[str] = Form(None),
     invoice_id: Optional[int] = Form(None),
+    amount: Optional[float] = Form(None),
 ):
     session = get_session()
     try:
@@ -646,6 +647,8 @@ def update_act(
                     act.invoice_id = None
                 else:
                     act.invoice_id = invoice_id
+            if amount is not None:
+                act.amount = amount
             session.commit()
         return {"success": True}
     finally:
