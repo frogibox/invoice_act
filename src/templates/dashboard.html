@@ -478,7 +478,7 @@
                     <div class="data-cell"><input type="text" class="form-control form-control-sm" style="width:100%" value="${inv.contractor_inn || ''}" onchange="updateInn(${inv.contractor_id}, this.value, this)"></div>
                     <div class="data-cell">${inv.amount.toFixed(2)}</div>
                     <div class="data-cell"><input type="date" class="form-control form-control-sm" value="${inv.payment_date || ''}" onchange="updateInvoice(${inv.id}, 'payment_date', this.value, this)"></div>
-                    <div class="data-cell"><input type="date" class="form-control form-control-sm" value="${inv.deadline || ''}" onchange="updateInvoice(${inv.id}, 'deadline', this.value, this)"></div>
+                    <div class="data-cell">${inv.deadline || ''}</div>
                     <div class="data-cell"><input type="number" class="form-control form-control-sm days-input" value="${inv.deadline_days || ''}" min="0" placeholder="0" onchange="calculateDeadline(${inv.id}, this.value, this)"></div>
                     <div class="data-cell">${formatName(inv.responsible_import) || ''}</div>
                     <div class="data-cell">
