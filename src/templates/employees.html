@@ -81,9 +81,9 @@
         <div class="employees-zone">
             <h5 class="mb-3">Управление сотрудниками</h5>
             
-            <div class="row">
-                <div class="col-md-3">
-                    <div class="card">
+<div class="row">
+                <div class="col-md-4">
+                    <div class="card mb-3">
                         <div class="card-body">
                             <h6>Добавить сотрудника</h6>
                             <form id="addEmployeeForm">
@@ -106,8 +106,36 @@
                             </form>
                         </div>
                     </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <h6>Массовое добавление</h6>
+                            <div class="mb-2">
+                                <label class="form-label">Порядок слов:</label>
+                                <div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="nameOrder" id="nameOrderFirstName" value="first_name" checked>
+                                        <label class="form-check-label" for="nameOrderFirstName">Первое имя</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="nameOrder" id="nameOrderFirstSurname" value="first_surname">
+                                        <label class="form-check-label" for="nameOrderFirstSurname">Первая фамилия</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label" for="bulkEmployees">Сотрудники (каждый с новой строки):</label>
+                                <small class="text-muted d-block mb-1">
+                                    Формат: <b>Имя Фамилия</b> или <b>Фамилия Имя</b><br>
+                                    Пример: Сергей Иванов
+                                </small>
+                                <textarea class="form-control" id="bulkEmployees" rows="6" placeholder="Сергей Иванов&#10;Семен Петров&#10;Анна Сидорова"></textarea>
+                            </div>
+                            <button type="button" class="btn btn-success w-100" onclick="addBulkEmployees()">Добавить сотрудников</button>
+                            <div id="bulkResult" class="mt-2"></div>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-9">
+                <div class="col-md-8">
                     <h6>Список сотрудников</h6>
                     <div>
                         <div class="data-table" id="employeesTable" style="--cols: minmax(100px, 1.5fr) minmax(80px, 1fr) minmax(100px, 1.5fr) minmax(100px, 1.5fr) minmax(100px, 1.5fr) minmax(160px, 1.5fr);">
@@ -242,7 +270,55 @@
                 .then(res => res.json())
                 .then(result => {
                     if (result.success) {
-                        loadEmployees();
+function addBulkEmployees() {
+            const text = document.getElementById('bulkEmployees').value.trim();
+            if (!text) {
+                alert('Введите список сотрудников');
+                return;
+            }
+            
+            const nameOrder = document.querySelector('input[name="nameOrder"]:checked').value;
+            const lines = text.split('\n').filter(line => line.trim());
+            
+            const employees = [];
+            for (const line of lines) {
+                const parts = line.trim().split(/\s+/);
+                if (parts.length >= 2) {
+                    if (nameOrder === 'first_name') {
+                        employees.push({ first_name: parts[0], last_name: parts[1] });
+                    } else {
+                        employees.push({ first_name: parts[1], last_name: parts[0] });
+                    }
+                }
+            }
+            
+            if (employees.length === 0) {
+                alert('Не удалось распознать сотрудников. Проверьте формат ввода.');
+                return;
+            }
+            
+            fetch('/employees/bulk-add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ employees: employees })
+            })
+            .then(res => res.json())
+            .then(result => {
+                const resultDiv = document.getElementById('bulkResult');
+                if (result.success) {
+                    resultDiv.innerHTML = `<div class="alert alert-success py-1 px-2 mb-0">Добавлено: ${result.added}, Пропущено: ${result.skipped}</div>`;
+                    document.getElementById('bulkEmployees').value = '';
+                    loadEmployees();
+                } else {
+                    resultDiv.innerHTML = `<div class="alert alert-danger py-1 px-2 mb-0">Ошибка: ${result.error}</div>`;
+                }
+            })
+            .catch(err => {
+                document.getElementById('bulkResult').innerHTML = `<div class="alert alert-danger py-1 px-2 mb-0">Ошибка: ${err}</div>`;
+            });
+        }
+        
+        loadEmployees();
                     } else {
                         alert('Ошибка: ' + (result.error || 'Unknown error'));
                     }

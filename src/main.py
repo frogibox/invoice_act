@@ -2,7 +2,7 @@ import os
 import re
 import shutil
 from datetime import datetime, date, timedelta
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from functools import lru_cache
 
 from fastapi import FastAPI, Request, Form, UploadFile, File
@@ -830,6 +830,54 @@ def update_employee(
 
         session.commit()
         return {"success": True}
+    except Exception as e:
+        session.rollback()
+        return {"error": str(e), "success": False}
+    finally:
+        session.close()
+
+
+@app.post("/employees/bulk-add")
+def bulk_add_employees(data: Dict[str, Any]):
+    session = get_session()
+    try:
+        employees_data = data.get("employees", [])
+        added = 0
+        skipped = 0
+
+        for emp in employees_data:
+            first_name = emp.get("first_name", "").strip()
+            last_name = emp.get("last_name", "").strip()
+
+            if not first_name or not last_name:
+                skipped += 1
+                continue
+
+            existing = (
+                session.query(Employee)
+                .filter(
+                    Employee.last_name == last_name,
+                    Employee.first_name == first_name,
+                )
+                .first()
+            )
+
+            if existing:
+                skipped += 1
+                continue
+
+            employee = Employee(
+                last_name=last_name,
+                first_name=first_name,
+                middle_name=emp.get("middle_name", "").strip() or None,
+                department=emp.get("department", "").strip() or None,
+                position=emp.get("position", "").strip() or None,
+            )
+            session.add(employee)
+            added += 1
+
+        session.commit()
+        return {"success": True, "added": added, "skipped": skipped}
     except Exception as e:
         session.rollback()
         return {"error": str(e), "success": False}
