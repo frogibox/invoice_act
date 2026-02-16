@@ -136,7 +136,7 @@
                     <input type="date" class="form-control" id="filterDateTo">
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
-                    <button class="btn btn-primary w-100" onclick="debugFilter()">Применить</button>
+                    <button class="btn btn-primary w-100" onclick="loadUnlinkedActs()">Применить</button>
                 </div>
             </div>
         </div>
@@ -254,11 +254,8 @@
                 .then(data => { invoices = data; });
         }
 
-        function debugFilter() {
-            const contractorSelect = document.getElementById('filterContractor');
-            const contractorId = contractorSelect.value;
-            const contractorText = contractorSelect.options[contractorSelect.selectedIndex].text;
-            
+        function loadUnlinkedActs() {
+            const contractorId = document.getElementById('filterContractor').value;
             const responsible = document.getElementById('filterResponsible').value;
             const dateFrom = document.getElementById('filterDateFrom').value;
             const dateTo = document.getElementById('filterDateTo').value;
@@ -270,25 +267,14 @@
             if (dateTo) url += 'date_to=' + dateTo + '&';
             url += 'sort_by=' + currentSort.field + '&sort_dir=' + currentSort.direction;
             
-            // Вывод в консоль и на страницу
-            console.log('DEBUG:', {contractorId, contractorText, url});
-            
-            // Показываем на странице
-            const debugDiv = document.getElementById('debugOutput') || document.createElement('div');
-            debugDiv.id = 'debugOutput';
-            debugDiv.style.cssText = 'position:fixed;top:10px;right:10px;background:#fff;padding:10px;border:2px solid red;z-index:9999;max-width:400px;overflow:auto;';
-            debugDiv.innerHTML = '<strong>DEBUG:</strong><br>' +
-                'contractorId: <code>' + contractorId + '</code><br>' +
-                'contractorText: <code>' + contractorText + '</code><br>' +
-                'URL: <code style="word-break:break-all;">' + url + '</code><br>';
-            
             fetch(url)
                 .then(r => r.json())
                 .then(acts => {
-                    debugDiv.innerHTML += '<br><strong>Result:</strong> ' + acts.length + ' acts<br>';
-                    if (acts.length > 0) {
-                        debugDiv.innerHTML += 'First: ' + JSON.stringify(acts[0], null, 2);
-                    }
+                    allActs = acts;
+                    currentPage = 1;
+                    renderCurrentPage();
+                });
+        }
                 });
             
             if (!document.getElementById('debugOutput')) {
