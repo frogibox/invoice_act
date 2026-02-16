@@ -547,17 +547,21 @@ async def import_sbis(file: UploadFile = File(...)):
                     row_info["reasons"].append("Дата подписания (Завершено) пустая")
                     skipped_empty += 1
 
-                existing = (
-                    session.query(Act)
-                    .filter(
-                        Act.number == number,
-                        Act.signing_date == signing_date,
-                        Act.amount == amount,
+                is_duplicate = False
+                if number and signing_date and amount and amount != 0:
+                    existing = (
+                        session.query(Act)
+                        .filter(
+                            Act.number == number,
+                            Act.signing_date == signing_date,
+                            Act.amount == amount,
+                        )
+                        .first()
                     )
-                    .first()
-                )
+                    if existing:
+                        is_duplicate = True
 
-                if existing:
+                if is_duplicate:
                     if row_info["import_status"] == "Импортирован":
                         row_info["import_status"] = "Пропущен"
                     row_info["reasons"].append(
