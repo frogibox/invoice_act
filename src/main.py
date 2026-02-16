@@ -509,11 +509,9 @@ async def import_sbis(file: UploadFile = File(...)):
                     "reasons": [],
                 }
 
-                if doc_type == "ЭДОСч":
+                if doc_type in ("ЭДОСч", "ДокОтгрИсх"):
                     row_info["import_status"] = "Пропущен"
-                    row_info["reasons"].append(
-                        "Тип документа: ЭДОСч (электронный счёт)"
-                    )
+                    row_info["reasons"].append(f"Тип документа: {doc_type}")
                     skipped_type += 1
 
                 if status != "Выполнение завершено успешно":
