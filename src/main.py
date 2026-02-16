@@ -15,8 +15,6 @@ from .database import get_session, init_db, Contractor, Employee, StopWord, Invo
 
 from workalendar.europe import Russia
 
-from .database import get_session, init_db, Contractor, Employee, StopWord, Invoice, Act
-
 app = FastAPI()
 
 _app_calendar = None
@@ -31,16 +29,7 @@ def _get_calendar():
 
 def get_russian_holidays(year: int) -> set:
     cal = _get_calendar()
-    holidays = {h[0] for h in cal.holidays(year)}
-
-    if year == 2025:
-        holidays.add(date(2025, 1, 9))
-        holidays.add(date(2025, 5, 10))
-    elif year == 2026:
-        holidays.add(date(2026, 1, 9))
-        holidays.add(date(2026, 5, 10))
-
-    return holidays
+    return {h[0] for h in cal.holidays(year)}
 
 
 def is_weekend_or_holiday(d: date, holidays: set) -> bool:
