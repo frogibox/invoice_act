@@ -599,8 +599,8 @@
                   if (result.success) {
                       const wrapper = inputEl.closest('.data-row-wrapper');
                       const cells = wrapper.querySelector('.data-row').querySelectorAll('.data-cell');
-                      const deadlineInput = cells[8].querySelector('input');
-                      deadlineInput.value = result.deadline;
+                      cells[8].textContent = result.deadline;
+                      loadInvoices();
                   } else {
                       alert(result.error || 'Ошибка расчёта дедлайна');
                   }
