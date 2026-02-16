@@ -144,6 +144,17 @@
             z-index: 10;
             background-color: #f8f9fa;
         }
+        .data-header .data-cell.sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+        .data-header .data-cell.sortable:hover {
+            background-color: #e9ecef;
+        }
+        .data-header .data-cell .sort-icon {
+            margin-left: 4px;
+            font-size: 0.8em;
+        }
     </style>
 </head>
 <body>
@@ -253,13 +264,13 @@
                         <div class="data-table" id="detailTable1C" style="--cols: 40px 80px 80px 80px 1fr 120px 100px 1fr;">
                             <div class="data-header">
                                 <div class="data-cell">№</div>
-                                <div class="data-cell">Номер</div>
-                                <div class="data-cell">Дата</div>
-                                <div class="data-cell">Сумма</div>
-                                <div class="data-cell">Контрагент</div>
-                                <div class="data-cell">Ответственный</div>
-                                <div class="data-cell">Статус</div>
-                                <div class="data-cell">Причины</div>
+                                <div class="data-cell sortable" onclick="sortTable('1C', 'number')">Номер<span class="sort-icon" id="sort-icon-1C-number"></span></div>
+                                <div class="data-cell sortable" onclick="sortTable('1C', 'date')">Дата<span class="sort-icon" id="sort-icon-1C-date"></span></div>
+                                <div class="data-cell sortable" onclick="sortTable('1C', 'amount')">Сумма<span class="sort-icon" id="sort-icon-1C-amount"></span></div>
+                                <div class="data-cell sortable" onclick="sortTable('1C', 'contractor')">Контрагент<span class="sort-icon" id="sort-icon-1C-contractor"></span></div>
+                                <div class="data-cell sortable" onclick="sortTable('1C', 'responsible')">Ответственный<span class="sort-icon" id="sort-icon-1C-responsible"></span></div>
+                                <div class="data-cell sortable" onclick="sortTable('1C', 'status')">Статус<span class="sort-icon" id="sort-icon-1C-status"></span></div>
+                                <div class="data-cell sortable" onclick="sortTable('1C', 'reasons')">Причины<span class="sort-icon" id="sort-icon-1C-reasons"></span></div>
                             </div>
                             <div id="detailBody1C"></div>
                         </div>
@@ -297,15 +308,15 @@
                         <div class="data-table" id="detailTableSbis" style="--cols: 40px 80px 80px 80px 1fr 100px 80px 80px 100px 1fr;">
                             <div class="data-header">
                                 <div class="data-cell">№</div>
-                                <div class="data-cell">Номер</div>
-                                <div class="data-cell">Дата</div>
-                                <div class="data-cell">Сумма</div>
-                                <div class="data-cell">Контрагент</div>
-                                <div class="data-cell">ИНН</div>
-                                <div class="data-cell">Тип док.</div>
-                                <div class="data-cell">Статус док.</div>
-                                <div class="data-cell">Результат</div>
-                                <div class="data-cell">Причины</div>
+                                <div class="data-cell sortable" onclick="sortTable('Sbis', 'number')">Номер<span class="sort-icon" id="sort-icon-Sbis-number"></span></div>
+                                <div class="data-cell sortable" onclick="sortTable('Sbis', 'date')">Дата<span class="sort-icon" id="sort-icon-Sbis-date"></span></div>
+                                <div class="data-cell sortable" onclick="sortTable('Sbis', 'amount')">Сумма<span class="sort-icon" id="sort-icon-Sbis-amount"></span></div>
+                                <div class="data-cell sortable" onclick="sortTable('Sbis', 'contractor')">Контрагент<span class="sort-icon" id="sort-icon-Sbis-contractor"></span></div>
+                                <div class="data-cell sortable" onclick="sortTable('Sbis', 'inn')">ИНН<span class="sort-icon" id="sort-icon-Sbis-inn"></span></div>
+                                <div class="data-cell sortable" onclick="sortTable('Sbis', 'doc_type')">Тип док.<span class="sort-icon" id="sort-icon-Sbis-doc_type"></span></div>
+                                <div class="data-cell sortable" onclick="sortTable('Sbis', 'status')">Статус док.<span class="sort-icon" id="sort-icon-Sbis-status"></span></div>
+                                <div class="data-cell sortable" onclick="sortTable('Sbis', 'import_status')">Результат<span class="sort-icon" id="sort-icon-Sbis-import_status"></span></div>
+                                <div class="data-cell sortable" onclick="sortTable('Sbis', 'reasons')">Причины<span class="sort-icon" id="sort-icon-Sbis-reasons"></span></div>
                             </div>
                             <div id="detailBodySbis"></div>
                         </div>
@@ -348,6 +359,69 @@
         let currentPage1C = 1;
         let currentPageSbis = 1;
         
+        let sortState1C = { column: null, direction: 'asc' };
+        let sortStateSbis = { column: null, direction: 'asc' };
+        
+        function sortTable(type, column) {
+            const sortState = type === '1C' ? sortState1C : sortStateSbis;
+            const filteredData = type === '1C' ? filteredData1C : filteredDataSbis;
+            
+            if (sortState.column === column) {
+                sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortState.column = column;
+                sortState.direction = 'asc';
+            }
+            
+            filteredData.sort((a, b) => {
+                let valA = a[column];
+                let valB = b[column];
+                
+                if (column === 'amount') {
+                    valA = valA || 0;
+                    valB = valB || 0;
+                } else if (column === 'reasons') {
+                    valA = (valA || []).join(' ').toLowerCase();
+                    valB = (valB || []).join(' ').toLowerCase();
+                } else {
+                    valA = (valA || '').toLowerCase();
+                    valB = (valB || '').toLowerCase();
+                }
+                
+                if (valA < valB) return sortState.direction === 'asc' ? -1 : 1;
+                if (valA > valB) return sortState.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+            
+            updateSortIcons(type);
+            
+            if (type === '1C') {
+                currentPage1C = 1;
+                renderFiltered1C();
+            } else {
+                currentPageSbis = 1;
+                renderFilteredSbis();
+            }
+        }
+        
+        function updateSortIcons(type) {
+            const sortState = type === '1C' ? sortState1C : sortStateSbis;
+            const columns = type === '1C' 
+                ? ['number', 'date', 'amount', 'contractor', 'responsible', 'status', 'reasons']
+                : ['number', 'date', 'amount', 'contractor', 'inn', 'doc_type', 'status', 'import_status', 'reasons'];
+            
+            columns.forEach(col => {
+                const iconEl = document.getElementById(`sort-icon-${type}-${col}`);
+                if (iconEl) {
+                    if (sortState.column === col) {
+                        iconEl.textContent = sortState.direction === 'asc' ? '▲' : '▼';
+                    } else {
+                        iconEl.textContent = '';
+                    }
+                }
+            });
+        }
+        
         function applyFilters1C() {
             const contractorFilter = document.getElementById('filterContractor1C').value.toLowerCase();
             const statusFilter = document.getElementById('filterStatus1C').value;
@@ -369,6 +443,8 @@
             document.getElementById('filterStatus1C').value = '';
             document.getElementById('filterReasons1C').value = '';
             filteredData1C = [...detailData1C];
+            sortState1C = { column: null, direction: 'asc' };
+            updateSortIcons('1C');
             currentPage1C = 1;
             renderFiltered1C();
         }
@@ -409,6 +485,8 @@
             document.getElementById('filterResultSbis').value = '';
             document.getElementById('filterReasonsSbis').value = '';
             filteredDataSbis = [...detailDataSbis];
+            sortStateSbis = { column: null, direction: 'asc' };
+            updateSortIcons('Sbis');
             currentPageSbis = 1;
             renderFilteredSbis();
         }
@@ -564,6 +642,8 @@
         function renderDetailTable1C(rows) {
             detailData1C = rows;
             filteredData1C = [...rows];
+            sortState1C = { column: null, direction: 'asc' };
+            updateSortIcons('1C');
             currentPage1C = 1;
             renderFiltered1C();
         }
@@ -635,6 +715,8 @@
         function renderDetailTableSbis(rows) {
             detailDataSbis = rows;
             filteredDataSbis = [...rows];
+            sortStateSbis = { column: null, direction: 'asc' };
+            updateSortIcons('Sbis');
             currentPageSbis = 1;
             renderFilteredSbis();
         }
