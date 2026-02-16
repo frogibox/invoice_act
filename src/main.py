@@ -13,38 +13,25 @@ from openpyxl import load_workbook
 
 from .database import get_session, init_db, Contractor, Employee, StopWord, Invoice, Act
 
+from workalendar.europe import Russia
+
+from .database import get_session, init_db, Contractor, Employee, StopWord, Invoice, Act
+
 app = FastAPI()
 
-STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
-if os.path.exists(STATIC_DIR):
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+_app_calendar = None
 
-templates = Jinja2Templates(
-    directory=os.path.join(os.path.dirname(__file__), "templates")
-)
 
-HTML_DIR = os.path.join(os.path.dirname(__file__), "templates")
-if not os.path.exists(HTML_DIR):
-    os.makedirs(HTML_DIR)
+def _get_calendar():
+    global _app_calendar
+    if _app_calendar is None:
+        _app_calendar = Russia()
+    return _app_calendar
 
 
 def get_russian_holidays(year: int) -> set:
-    holidays = {
-        date(year, 1, 1),
-        date(year, 1, 2),
-        date(year, 1, 3),
-        date(year, 1, 4),
-        date(year, 1, 5),
-        date(year, 1, 6),
-        date(year, 1, 7),
-        date(year, 1, 8),
-        date(year, 2, 23),
-        date(year, 3, 8),
-        date(year, 5, 1),
-        date(year, 5, 9),
-        date(year, 6, 12),
-        date(year, 11, 4),
-    }
+    cal = _get_calendar()
+    holidays = {h[0] for h in cal.holidays(year)}
 
     if year == 2025:
         holidays.add(date(2025, 1, 9))
@@ -73,6 +60,19 @@ def add_business_days(start_date: date, days: int, holidays: set) -> date:
             added += 1
 
     return current
+
+
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+templates = Jinja2Templates(
+    directory=os.path.join(os.path.dirname(__file__), "templates")
+)
+
+HTML_DIR = os.path.join(os.path.dirname(__file__), "templates")
+if not os.path.exists(HTML_DIR):
+    os.makedirs(HTML_DIR)
 
 
 @app.on_event("startup")

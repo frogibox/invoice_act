@@ -10,6 +10,7 @@ dependencies = [
     "openpyxl>=3.1.0",
     "jinja2>=3.1.0",
     "python-multipart>=0.0.6",
+    "workalendar>=17.0.0",
 ]
 
 [build-system]
