@@ -136,7 +136,7 @@
                     <input type="date" class="form-control" id="filterDateTo">
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
-                    <button class="btn btn-primary w-100" onclick="loadUnlinkedActs()">Применить</button>
+                    <button class="btn btn-primary w-100" onclick="debugLoadUnlinkedActs()">Применить</button>
                 </div>
             </div>
         </div>
@@ -254,8 +254,11 @@
                 .then(data => { invoices = data; });
         }
 
-        function loadUnlinkedActs() {
-            const contractorId = document.getElementById('filterContractor').value;
+        function debugLoadUnlinkedActs() {
+            const contractorSelect = document.getElementById('filterContractor');
+            const contractorId = contractorSelect.value;
+            const contractorText = contractorSelect.options[contractorSelect.selectedIndex].text;
+            
             const responsible = document.getElementById('filterResponsible').value;
             const dateFrom = document.getElementById('filterDateFrom').value;
             const dateTo = document.getElementById('filterDateTo').value;
@@ -267,12 +270,49 @@
             if (dateTo) url += 'date_to=' + dateTo + '&';
             url += 'sort_by=' + currentSort.field + '&sort_dir=' + currentSort.direction;
             
+            alert('Selected: id="' + contractorId + '", text="' + contractorText + '"\nURL: ' + url);
+            
+            // Debug: show first 3 acts from URL directly
             fetch(url)
                 .then(r => r.json())
                 .then(acts => {
+                    alert('Loaded ' + acts.length + ' acts\n\nFirst 3:\n' + 
+                        acts.slice(0,3).map(a => 'ID: ' + a.id + ', Contractor: ' + a.contractor_name).join('\n'));
+                });
+        }
+        
+        function loadUnlinkedActs() {
+            const contractorId = document.getElementById('filterContractor').value;
+            const responsible = document.getElementById('filterResponsible').value;
+            const dateFrom = document.getElementById('filterDateFrom').value;
+            const dateTo = document.getElementById('filterDateTo').value;
+            
+            console.log('Filter values:', {contractorId, responsible, dateFrom, dateTo});
+            
+            let url = '/acts/unlinked?';
+            if (contractorId) url += 'contractor_id=' + contractorId + '&';
+            if (responsible) url += 'responsible_manager=' + encodeURIComponent(responsible) + '&';
+            if (dateFrom) url += 'date_from=' + dateFrom + '&';
+            if (dateTo) url += 'date_to=' + dateTo + '&';
+            url += 'sort_by=' + currentSort.field + '&sort_dir=' + currentSort.direction;
+            url += '&_=' + new Date().getTime(); // cache busting
+            
+            console.log('Loading unlinked acts, URL:', url);
+            
+            fetch(url)
+                .then(r => {
+                    console.log('Response status:', r.status);
+                    return r.json();
+                })
+                .then(acts => {
+                    console.log('Loaded acts count:', acts.length);
                     allActs = acts;
                     currentPage = 1;
                     renderCurrentPage();
+                })
+                .catch(err => {
+                    console.error('Error loading acts:', err);
+                    alert('Ошибка загрузки данных: ' + err);
                 });
         }
 

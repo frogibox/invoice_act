@@ -315,12 +315,22 @@
             if (dateTo) url += 'date_to=' + dateTo + '&';
             url += 'sort_by=' + currentSort.field + '&sort_dir=' + currentSort.direction;
             
+            console.log('Loading linked acts, URL:', url);
+            
             fetch(url)
-                .then(r => r.json())
+                .then(r => {
+                    console.log('Response status:', r.status);
+                    return r.json();
+                })
                 .then(acts => {
+                    console.log('Loaded acts count:', acts.length);
                     allActs = acts;
                     currentPage = 1;
                     renderCurrentPage();
+                })
+                .catch(err => {
+                    console.error('Error loading acts:', err);
+                    alert('Ошибка загрузки данных: ' + err);
                 });
         }
         
