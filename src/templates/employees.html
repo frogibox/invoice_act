@@ -312,15 +312,6 @@
             .catch(() => {});
         }
         
-        loadEmployees();
-        
-        loadEmployees();
-                    } else {
-                        alert('Ошибка: ' + (result.error || 'Unknown error'));
-                    }
-                });
-        }
-        
         function editEmployee(id) {
             const emp = employees.find(e => e.id === id);
             if (!emp) return;
