@@ -5,7 +5,7 @@ from datetime import datetime, date, timedelta
 from typing import Optional, List, Dict, Any
 from functools import lru_cache
 
-from fastapi import FastAPI, Request, Form, UploadFile, File
+from fastapi import FastAPI, Request, Form, UploadFile, File, Body
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -838,7 +838,7 @@ def update_employee(
 
 
 @app.post("/employees/bulk-add")
-def bulk_add_employees(data: Dict[str, Any]):
+def bulk_add_employees(data: Dict[str, Any] = Body(...)):
     session = get_session()
     try:
         employees_data = data.get("employees", [])
