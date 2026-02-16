@@ -991,31 +991,76 @@ def get_unlinked_acts(
         if sort_by in ["contractor_name", "contractor_inn"]:
             query = query.join(Contractor, Act.contractor_id == Contractor.id)
 
-        if sort_dir == "desc":
-            query = query.order_by(sort_column.desc())
-        else:
-            query = query.order_by(sort_column)
-
-        acts = query.all()
-
-        result = []
-        for act in acts:
-            contractor = act.contractor
-
-            result.append(
-                {
-                    "id": act.id,
-                    "number": act.number,
-                    "signing_date": act.signing_date.strftime("%d.%m.%Y")
-                    if act.signing_date
-                    else "",
-                    "amount": act.amount,
-                    "contractor_id": act.contractor_id,
-                    "contractor_name": contractor.name if contractor else "",
-                    "contractor_inn": contractor.inn if contractor else "",
-                    "responsible_manager": act.responsible_manager,
-                }
+        if sort_by == "has_available_invoices":
+            acts = query.all()
+            contractor_ids = [a.contractor_id for a in acts]
+            available_invoices = (
+                session.query(Invoice)
+                .filter(
+                    Invoice.contractor_id.in_(contractor_ids),
+                    Invoice.status != "Оплачен",
+                )
+                .all()
             )
+            invoices_by_contractor = {}
+            for inv in available_invoices:
+                if inv.contractor_id not in invoices_by_contractor:
+                    invoices_by_contractor[inv.contractor_id] = []
+                invoices_by_contractor[inv.contractor_id].append(inv)
+
+            for act in acts:
+                act._has_available = (
+                    len(invoices_by_contractor.get(act.contractor_id, [])) > 0
+                )
+
+            acts.sort(
+                key=lambda x: getattr(x, "_has_available", False),
+                reverse=(sort_dir == "desc"),
+            )
+            result = []
+            for act in acts:
+                contractor = act.contractor
+
+                result.append(
+                    {
+                        "id": act.id,
+                        "number": act.number,
+                        "signing_date": act.signing_date.strftime("%d.%m.%Y")
+                        if act.signing_date
+                        else "",
+                        "amount": act.amount,
+                        "contractor_id": act.contractor_id,
+                        "contractor_name": contractor.name if contractor else "",
+                        "contractor_inn": contractor.inn if contractor else "",
+                        "responsible_manager": act.responsible_manager,
+                    }
+                )
+        else:
+            if sort_dir == "desc":
+                query = query.order_by(sort_column.desc())
+            else:
+                query = query.order_by(sort_column)
+
+            acts = query.all()
+
+            result = []
+            for act in acts:
+                contractor = act.contractor
+
+                result.append(
+                    {
+                        "id": act.id,
+                        "number": act.number,
+                        "signing_date": act.signing_date.strftime("%d.%m.%Y")
+                        if act.signing_date
+                        else "",
+                        "amount": act.amount,
+                        "contractor_id": act.contractor_id,
+                        "contractor_name": contractor.name if contractor else "",
+                        "contractor_inn": contractor.inn if contractor else "",
+                        "responsible_manager": act.responsible_manager,
+                    }
+                )
 
         return result
     finally:
