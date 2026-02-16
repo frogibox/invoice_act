@@ -71,6 +71,7 @@ def normalize_contractor_name(name: str) -> str:
     if not name:
         return name
     name = name.strip()
+    name = name.upper()
 
     name = re.sub(r'["""\'\",;]', " ", name)
     name = re.sub(r"\s+", " ", name)
