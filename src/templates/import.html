@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Импорт и Настройки</title>
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .form-control, .form-select {
+            border-color: #adb5bd; box-shadow: inset 0 1px 3px rgba(0,0,0,0.12);
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea; box-shadow: inset 0 1px 3px rgba(0,0,0,0.12), 0 0 0 0.2rem rgba(102,126,234,0.25);
+        }
+        .container { max-width: 2200px; }
+        .stop-words-zone { background-color: #e3f2fd; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .import-zone { background-color: #fff; border-radius: 8px; padding: 15px; position: relative; }
+        .import-summary { background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .import-summary.error { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .navbar { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; 
+            padding-top: 0.3rem; 
+            padding-bottom: 0.3rem; 
+        }
+        .navbar-brand { padding-top: 0.2rem; padding-bottom: 0.2rem; font-size: 1rem; }
+        .nav-link { padding: 0.3rem 0.5rem !important; font-size: 0.9rem; }
+        .nav-link.active { 
+            font-weight: bold; 
+            text-decoration: underline;
+            background-color: rgba(255,255,255,0.15);
+            border-radius: 4px;
+        }
+        .tab-buttons { margin-bottom: 15px; }
+        .tab-buttons .btn { margin-right: 5px; }
+
+        .data-table {
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            background: #fff;
+            overflow: hidden;
+        }
+        .data-header {
+            display: grid;
+            grid-template-columns: var(--cols);
+            background-color: #f8f9fa;
+            font-weight: bold;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .data-row-wrapper {
+            display: flex;
+            flex-direction: column;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .data-row {
+            display: grid;
+            grid-template-columns: var(--cols);
+            align-items: center;
+        }
+        .data-cell {
+            padding: 6px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-break: break-word;
+            font-size: 0.85em;
+        }
+        .data-row.imported { background-color: #d4edda; }
+        .data-row.skipped { background-color: #f8d7da; }
+        .data-row.error { background-color: #f0ad4e; }
+        .detail-reasons { font-size: 0.8em; color: #666; }
+        .stop-words-list { display: flex; flex-direction: column; gap: 4px; }
+        .stop-word-item { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; background: rgba(255,255,255,0.5); border-radius: 4px; }
+        
+        .layout-wrapper { display: flex; }
+        .sidebar { 
+            width: 300px; 
+            flex-shrink: 0; 
+            padding-right: 15px; 
+            position: sticky;
+            top: 10px;
+            align-self: flex-start;
+            max-height: calc(100vh - 80px);
+            overflow-y: auto;
+        }
+        .main-content { flex: 1; min-width: 0; position: relative; }
+        
+        .pagination-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+            flex-wrap: wrap;
+            font-size: 0.9rem;
+        }
+        .pagination-bar a, .pagination-bar span.page-link-item {
+            cursor: pointer;
+            padding: 4px 8px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #495057;
+            background: #fff;
+            user-select: none;
+        }
+        .pagination-bar a:hover { background-color: #e9ecef; }
+        .pagination-bar a.active { background-color: #667eea; color: #fff; border-color: #667eea; }
+        .pagination-bar a.disabled { opacity: 0.5; pointer-events: none; }
+        .pagination-bar input.page-size-input {
+            width: 50px; text-align: center;
+            -moz-appearance: textfield; appearance: textfield;
+        }
+        .pagination-bar input.page-size-input::-webkit-outer-spin-button,
+        .pagination-bar input.page-size-input::-webkit-inner-spin-button {
+            -webkit-appearance: none; margin: 0;
+        }
+        
+        .layout-wrapper { display: flex; }
+        .sidebar { 
+            width: 300px; 
+            flex-shrink: 0; 
+            padding-right: 15px; 
+            position: sticky;
+            top: 10px;
+            align-self: flex-start;
+            max-height: calc(100vh - 80px);
+            overflow-y: auto;
+        }
+        .main-content { flex: 1; min-width: 0; position: relative; overflow: visible; }
+        
+        .data-table .data-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .detail-wrapper {
+            overflow: visible;
+            position: relative;
+        }
+        .detail-wrapper .data-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark mb-3">
+        <div class="container" style="max-width: 2200px;">
+            <a class="navbar-brand" href="/">Учет счетов и актов</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">Счета</a>
+                <a class="nav-link" href="/linked-acts">Привязанные акты</a>
+                <a class="nav-link" href="/unlinked-acts">Непривязанные акты</a>
+                <a class="nav-link active" href="/import">Импорт и Настройки</a>
+                <a class="nav-link" href="/employees">Сотрудники</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container" style="max-width: 2200px;">
+        <div class="layout-wrapper">
+        <div class="sidebar">
+            <div class="stop-words-zone">
+                <h5>Стоп-слова</h5>
+                <p class="text-muted small">Строки с этими словами в выгрузке из 1С будут исключены при импорте</p>
+                
+                <div class="mb-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="newStopWord" placeholder="Новое слово">
+                        <button class="btn btn-primary" onclick="addStopWord()">Добавить</button>
+                    </div>
+                </div>
+                
+                <div id="stopWordsList">
+                    {% if stop_words %}
+                    <div class="stop-words-list">
+                    {% for sw in stop_words %}
+                    <div class="stop-word-item">
+                        <span>{{ sw.word }}</span>
+                        <button class="btn btn-sm btn-danger" onclick="deleteStopWord({{ sw.id }})">X</button>
+                    </div>
+                    {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">Стоп-слова не добавлены</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="import-zone">
+                <h5>Импорт данных</h5>
+                
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6>Импорт из 1С</h6>
+                                <form id="import1CForm" enctype="multipart/form-data">
+                                    <div class="mb-3">
+                                        <input type="file" class="form-control" name="file" accept=".xlsx" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Импортировать из 1С</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6>Импорт из СБИС</h6>
+                                <form id="importSbisForm" enctype="multipart/form-data">
+                                    <div class="mb-3">
+                                        <input type="file" class="form-control" name="file" accept=".xlsx" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-success">Импортировать из СБИС</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="importLog"></div>
+                
+                <div id="detailResults1C" style="display: none; margin-top: 15px; position: relative;">
+                    <h6>Детализация импорта из 1С</h6>
+                    <div class="detail-wrapper">
+                        <div class="data-table" id="detailTable1C" style="--cols: 40px 80px 80px 80px 1fr 120px 100px 1fr;">
+                            <div class="data-header">
+                                <div class="data-cell">№</div>
+                                <div class="data-cell">Номер</div>
+                                <div class="data-cell">Дата</div>
+                                <div class="data-cell">Сумма</div>
+                                <div class="data-cell">Контрагент</div>
+                                <div class="data-cell">Ответственный</div>
+                                <div class="data-cell">Статус</div>
+                                <div class="data-cell">Причины</div>
+                            </div>
+                            <div id="detailBody1C"></div>
+                        </div>
+                    </div>
+                    <div class="pagination-bar" id="paginationBar1C"></div>
+                </div>
+                
+                <div id="detailResultsSbis" style="display: none; margin-top: 15px; position: relative;">
+                    <h6>Детализация импорта из СБИС</h6>
+                    <div class="detail-wrapper">
+                        <div class="data-table" id="detailTableSbis" style="--cols: 40px 80px 80px 80px 1fr 100px 80px 80px 100px 1fr;">
+                            <div class="data-header">
+                                <div class="data-cell">№</div>
+                                <div class="data-cell">Номер</div>
+                                <div class="data-cell">Дата</div>
+                                <div class="data-cell">Сумма</div>
+                                <div class="data-cell">Контрагент</div>
+                                <div class="data-cell">ИНН</div>
+                                <div class="data-cell">Тип док.</div>
+                                <div class="data-cell">Статус док.</div>
+                                <div class="data-cell">Результат</div>
+                                <div class="data-cell">Причины</div>
+                            </div>
+                            <div id="detailBodySbis"></div>
+                        </div>
+                    </div>
+                    <div class="pagination-bar" id="paginationBarSbis"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function addStopWord() {
+            const input = document.getElementById('newStopWord');
+            const word = input.value.trim();
+            if (!word) return;
+            
+            const formData = new FormData();
+            formData.append('word', word);
+            
+            fetch('/stop-words/add', {
+                method: 'POST',
+                body: formData
+            }).then(() => {
+                input.value = '';
+                location.reload();
+            });
+        }
+
+        function deleteStopWord(wordId) {
+            fetch('/stop-words/delete/' + wordId, { method: 'POST' })
+                .then(() => location.reload());
+        }
+        
+        let detailData1C = [];
+        let detailDataSbis = [];
+        let pageSize = 12;
+        let currentPage1C = 1;
+        let currentPageSbis = 1;
+        
+        function renderPagination1C() {
+            renderPagination('1C', detailData1C, currentPage1C, 'detailBody1C', 'paginationBar1C');
+        }
+        
+        function renderPaginationSbis() {
+            renderPagination('Sbis', detailDataSbis, currentPageSbis, 'detailBodySbis', 'paginationBarSbis');
+        }
+        
+        function renderPagination(type, allData, currentPage, bodyId, barId) {
+            const body = document.getElementById(bodyId);
+            const bar = document.getElementById(barId);
+            if (allData.length === 0) { bar.innerHTML = ''; return; }
+            
+            const totalPages = pageSize === 0 ? 1 : Math.ceil(allData.length / pageSize);
+            let html = '';
+            
+            html += `<a onclick="setPageSize('${type}', 12)" class="${pageSize === 12 ? 'active' : ''}">12</a>`;
+            html += `<a onclick="setPageSize('${type}', 24)" class="${pageSize === 24 ? 'active' : ''}">24</a>`;
+            html += `<input type="number" class="page-size-input form-control form-control-sm" id="customPageSize${type}" min="1" value="${pageSize}" placeholder="${pageSize}" onkeydown="if(event.key==='Enter'){event.preventDefault();applyCustomPageSize('${type}');}">`;
+            html += `<a onclick="applyCustomPageSize('${type}')">Применить</a>`;
+            html += `<a onclick="showAll('${type}')">Все</a>`;
+            
+            html += `<span style="margin-left:8px;"></span>`;
+            
+            html += `<a onclick="goToPage('${type}', ${currentPage - 1})" class="${currentPage <= 1 ? 'disabled' : ''}">Назад</a>`;
+            
+            if (pageSize > 0) {
+                const maxVisible = 5;
+                let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+                let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+                if (endPage - startPage < maxVisible - 1) {
+                    startPage = Math.max(1, endPage - maxVisible + 1);
+                }
+                
+                if (startPage > 1) {
+                    html += `<a onclick="goToPage('${type}', 1)">1</a>`;
+                    if (startPage > 2) html += `<span style="padding:4px">...</span>`;
+                }
+                
+                for (let i = startPage; i <= endPage; i++) {
+                    html += `<a onclick="goToPage('${type}', ${i})" class="${i === currentPage ? 'active' : ''}">${i}</a>`;
+                }
+                
+                if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) html += `<span style="padding:4px">...</span>`;
+                    html += `<a onclick="goToPage('${type}', ${totalPages})">Конец</a>`;
+                }
+            }
+            
+            html += `<a onclick="goToPage('${type}', ${currentPage + 1})" class="${currentPage >= totalPages ? 'disabled' : ''}">Вперед</a>`;
+            
+            html += `<span style="margin-left:8px;color:#888;font-size:0.85rem;">Всего: ${allData.length}</span>`;
+            
+            bar.innerHTML = html;
+        }
+        
+        function setPageSize(type, size) {
+            pageSize = size;
+            if (type === '1C') {
+                currentPage1C = 1;
+                renderCurrentPage1C();
+            } else {
+                currentPageSbis = 1;
+                renderCurrentPageSbis();
+            }
+        }
+        
+        function applyCustomPageSize(type) {
+            const val = parseInt(document.getElementById('customPageSize' + type).value);
+            if (val > 0) {
+                pageSize = val;
+                if (type === '1C') {
+                    currentPage1C = 1;
+                    renderCurrentPage1C();
+                } else {
+                    currentPageSbis = 1;
+                    renderCurrentPageSbis();
+                }
+            }
+        }
+        
+        function showAll(type) {
+            if (!confirm('Будут выведены все строки. Продолжить?')) return;
+            pageSize = 0;
+            if (type === '1C') {
+                currentPage1C = 1;
+                renderCurrentPage1C();
+            } else {
+                currentPageSbis = 1;
+                renderCurrentPageSbis();
+            }
+        }
+        
+        function goToPage(type, page) {
+            const totalPages = pageSize === 0 ? 1 : Math.ceil((type === '1C' ? detailData1C : detailDataSbis).length / pageSize);
+            if (page < 1 || page > totalPages) return;
+            if (type === '1C') {
+                currentPage1C = page;
+                renderCurrentPage1C();
+            } else {
+                currentPageSbis = page;
+                renderCurrentPageSbis();
+            }
+        }
+        
+        function renderCurrentPage1C() {
+            let paginated;
+            if (pageSize === 0) {
+                paginated = detailData1C;
+            } else {
+                const start = (currentPage1C - 1) * pageSize;
+                paginated = detailData1C.slice(start, start + pageSize);
+            }
+            renderTable1C(paginated);
+            renderPagination1C();
+        }
+        
+        function renderCurrentPageSbis() {
+            let paginated;
+            if (pageSize === 0) {
+                paginated = detailDataSbis;
+            } else {
+                const start = (currentPageSbis - 1) * pageSize;
+                paginated = detailDataSbis.slice(start, start + pageSize);
+            }
+            renderTableSbis(paginated);
+            renderPaginationSbis();
+        }
+
+        document.getElementById('import1CForm').onsubmit = async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const log = document.getElementById('importLog');
+            log.style.display = 'block';
+            log.className = 'import-summary';
+            log.innerHTML = '<strong>Импорт из 1С...</strong>';
+            
+            document.getElementById('detailResults1C').style.display = 'none';
+            document.getElementById('detailResultsSbis').style.display = 'none';
+            
+            try {
+                const response = await fetch('/import-1c', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    log.innerHTML = `<strong>Импорт завершен!</strong><br>
+                        Добавлено: ${result.added}<br>
+                        Пропущено (сумма = 0): ${result.skipped_zero}<br>
+                        Пропущено (удалить/заглушка): ${result.skipped_delete}<br>
+                        Пропущено (не РПО/Продажи): ${result.skipped_responsible}<br>
+                        Пропущено (стоп-слова): ${result.skipped_stopwords}<br>
+                        Пропущено (дубликаты): ${result.skipped_duplicate}`;
+                    
+                    renderDetailTable1C(result.rows_detail);
+                } else {
+                    log.className = 'import-summary error';
+                    log.innerHTML = '<strong>Ошибка:</strong> ' + (result.error || 'Unknown error');
+                }
+            } catch (err) {
+                log.className = 'import-summary error';
+                log.innerHTML = '<strong>Ошибка:</strong> ' + err;
+            }
+        };
+        
+        function renderDetailTable1C(rows) {
+            detailData1C = rows;
+            currentPage1C = 1;
+            renderCurrentPage1C();
+        }
+        
+        function renderTable1C(rows) {
+            const body = document.getElementById('detailBody1C');
+            body.innerHTML = '';
+            
+            rows.forEach((row, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'data-row-wrapper';
+                
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'data-row ' + (row.status === 'Импортирован' ? 'imported' : (row.status === 'Ошибка' ? 'error' : 'skipped'));
+                rowDiv.innerHTML = `
+                    <div class="data-cell">${index + 1}</div>
+                    <div class="data-cell">${row.number || ''}</div>
+                    <div class="data-cell">${row.date || ''}</div>
+                    <div class="data-cell">${row.amount || ''}</div>
+                    <div class="data-cell">${row.contractor || ''}</div>
+                    <div class="data-cell">${row.responsible || ''}</div>
+                    <div class="data-cell">${row.status}</div>
+                    <div class="data-cell detail-reasons">${row.reasons ? row.reasons.join('<br>') : ''}</div>
+                `;
+                wrapper.appendChild(rowDiv);
+                body.appendChild(wrapper);
+            });
+            
+            document.getElementById('detailResults1C').style.display = 'block';
+        }
+
+        document.getElementById('importSbisForm').onsubmit = async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const log = document.getElementById('importLog');
+            log.style.display = 'block';
+            log.className = 'import-summary';
+            log.innerHTML = '<strong>Импорт из СБИС...</strong>';
+            
+            document.getElementById('detailResults1C').style.display = 'none';
+            document.getElementById('detailResultsSbis').style.display = 'none';
+            
+            try {
+                const response = await fetch('/import-sbis', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    log.innerHTML = `<strong>Импорт завершен!</strong><br>
+                        Добавлено: ${result.added}<br>
+                        Пропущено (неверный статус): ${result.skipped_status}<br>
+                        Пропущено (тип ЭДОСч): ${result.skipped_type}<br>
+                        Пропущено (пустые данные): ${result.skipped_empty}<br>
+                        Пропущено (дубликаты): ${result.skipped_duplicate}`;
+                    
+                    renderDetailTableSbis(result.rows_detail);
+                } else {
+                    log.className = 'import-summary error';
+                    log.innerHTML = '<strong>Ошибка:</strong> ' + (result.error || 'Unknown error');
+                }
+            } catch (err) {
+                log.className = 'import-summary error';
+                log.innerHTML = '<strong>Ошибка:</strong> ' + err;
+            }
+        };
+        
+        function renderDetailTableSbis(rows) {
+            detailDataSbis = rows;
+            currentPageSbis = 1;
+            renderCurrentPageSbis();
+        }
+        
+        function renderTableSbis(rows) {
+            const body = document.getElementById('detailBodySbis');
+            body.innerHTML = '';
+            
+            rows.forEach((row, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'data-row-wrapper';
+                
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'data-row ' + (row.import_status === 'Импортирован' ? 'imported' : (row.import_status === 'Ошибка' ? 'error' : 'skipped'));
+                rowDiv.innerHTML = `
+                    <div class="data-cell">${index + 1}</div>
+                    <div class="data-cell">${row.number || ''}</div>
+                    <div class="data-cell">${row.date || ''}</div>
+                    <div class="data-cell">${row.amount || ''}</div>
+                    <div class="data-cell">${row.contractor || ''}</div>
+                    <div class="data-cell">${row.inn || ''}</div>
+                    <div class="data-cell">${row.doc_type || ''}</div>
+                    <div class="data-cell">${row.status || ''}</div>
+                    <div class="data-cell">${row.import_status}</div>
+                    <div class="data-cell detail-reasons">${row.reasons ? row.reasons.join('<br>') : ''}</div>
+                `;
+                wrapper.appendChild(rowDiv);
+                body.appendChild(wrapper);
+            });
+            
+            document.getElementById('detailResultsSbis').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Непривязанные акты</title>
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .form-control, .form-select {
+            border-color: #adb5bd; box-shadow: inset 0 1px 3px rgba(0,0,0,0.12);
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea; box-shadow: inset 0 1px 3px rgba(0,0,0,0.12), 0 0 0 0.2rem rgba(102,126,234,0.25);
+        }
+        .container { max-width: 2200px; }
+        .table-wrapper { }
+        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; padding-top: 0.3rem; padding-bottom: 0.3rem; }
+        .navbar-brand { padding-top: 0.2rem; padding-bottom: 0.2rem; font-size: 1rem; }
+        .nav-link { padding: 0.3rem 0.5rem !important; font-size: 0.9rem; }
+        .nav-link.active { 
+            font-weight: bold; 
+            text-decoration: underline;
+            background-color: rgba(255,255,255,0.15);
+            border-radius: 4px;
+        }
+
+        .data-table {
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            background: #fff;
+        }
+        .data-header {
+            display: grid;
+            grid-template-columns: var(--cols);
+            background-color: #e9ecef;
+            font-weight: bold;
+            border-bottom: 2px solid #dee2e6;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border: 1px solid #dee2e6;
+            border-radius: 4px 4px 0 0;
+        }
+        .data-row-wrapper {
+            display: flex;
+            flex-direction: column;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .data-row {
+            display: grid;
+            grid-template-columns: var(--cols);
+            align-items: center;
+            padding: 4px 0;
+        }
+        .data-row:hover { background-color: #f8f9fa; }
+        .data-cell {
+            padding: 4px 3px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-break: break-word;
+        }
+        .data-header .data-cell { white-space: nowrap; }
+        .data-cell input, .data-cell select { width: 100%; min-width: 0; }
+        .action-buttons .btn { white-space: nowrap; }
+        .pagination-bar {
+            display: flex; align-items: center; gap: 8px; padding: 8px 0; flex-wrap: wrap; font-size: 0.9rem;
+        }
+        .pagination-bar a, .pagination-bar span.page-link-item {
+            cursor: pointer; padding: 4px 8px; border: 1px solid #dee2e6; border-radius: 4px;
+            text-decoration: none; color: #495057; background: #fff; user-select: none;
+        }
+        .pagination-bar a:hover { background-color: #e9ecef; }
+        .pagination-bar a.active { background-color: #667eea; color: #fff; border-color: #667eea; }
+        .pagination-bar a.disabled { opacity: 0.5; pointer-events: none; }
+        .pagination-bar input.page-size-input {
+            width: 50px; text-align: center;
+            -moz-appearance: textfield; appearance: textfield;
+        }
+        .pagination-bar input.page-size-input::-webkit-outer-spin-button,
+        .pagination-bar input.page-size-input::-webkit-inner-spin-button {
+            -webkit-appearance: none; margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark mb-3">
+        <div class="container">
+            <a class="navbar-brand" href="/">Учет счетов и актов</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">Счета</a>
+                <a class="nav-link" href="/linked-acts">Привязанные акты</a>
+                <a class="nav-link active" href="/unlinked-acts">Непривязанные акты</a>
+                <a class="nav-link" href="/import">Импорт и Настройки</a>
+                <a class="nav-link" href="/employees">Сотрудники</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="filter-zone" style="background-color: #fff; border-radius: 8px; padding: 10px; margin-bottom: 15px;">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Контрагент</label>
+                    <select class="form-select" id="filterContractor">
+                        <option value="">Все</option>
+                        {% for contractor in contractors %}
+                        <option value="{{ contractor.id }}">{{ contractor.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Ответственный менеджер</label>
+                    <select class="form-select" id="filterResponsible">
+                        <option value="">Все</option>
+                        {% for emp in employees %}
+                        <option value="{{ emp.last_name }} {{ emp.first_name }}{% if emp.middle_name %} {{ emp.middle_name }}{% endif %}">
+                            {{ emp.last_name }} {{ emp.first_name }}{% if emp.middle_name %} {{ emp.middle_name }}{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Дата подписания с</label>
+                    <input type="date" class="form-control" id="filterDateFrom">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Дата подписания по</label>
+                    <input type="date" class="form-control" id="filterDateTo">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" onclick="loadUnlinkedActs()">Применить</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-wrapper">
+            <div class="data-header" style="--cols: minmax(70px, 0.8fr) minmax(120px, 3fr) minmax(85px, 0.9fr) minmax(100px, 1fr) minmax(80px, 0.8fr) minmax(130px, 1.5fr) minmax(130px, 2fr) minmax(160px, 1.5fr);">
+                    <div class="data-cell">№ акта</div>
+                    <div class="data-cell">Контрагент</div>
+                    <div class="data-cell">ИНН</div>
+                    <div class="data-cell">Дата подписания</div>
+                    <div class="data-cell">Сумма</div>
+                    <div class="data-cell">Ответственный менеджер</div>
+                    <div class="data-cell">Привязать к счету</div>
+                    <div class="data-cell">Действия</div>
+            </div>
+            <div class="data-table" style="--cols: minmax(70px, 0.8fr) minmax(120px, 3fr) minmax(85px, 0.9fr) minmax(100px, 1fr) minmax(80px, 0.8fr) minmax(130px, 1.5fr) minmax(130px, 2fr) minmax(160px, 1.5fr);">
+                <div id="unlinkedActsBody"></div>
+            </div>
+        </div>
+        <div class="pagination-bar" id="paginationBar"></div>
+    </div>
+
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Подтверждение удаления</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="deleteConfirmMessage"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Удалить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let employees = [];
+        let invoices = [];
+        let allActs = [];
+        let pageSize = 12;
+        let currentPage = 1;
+
+        function parseDateFromString(value) {
+            if (!value) return null;
+            value = value.trim();
+            const formats = [
+                /^(\d{4})-(\d{2})-(\d{2})$/,
+                /^(\d{2})\.(\d{2})\.(\d{4})$/,
+                /^(\d{2})\/(\d{2})\/(\d{4})$/,
+                /^(\d{2})-(\d{2})-(\d{4})$/,
+            ];
+            for (let fmt of formats) {
+                const match = value.match(fmt);
+                if (match) {
+                    if (fmt === formats[0]) {
+                        return value;
+                    } else {
+                        const day = match[1];
+                        const month = match[2];
+                        const year = match[3];
+                        return `${year}-${month}-${day}`;
+                    }
+                }
+            }
+            return null;
+        }
+        
+        document.querySelectorAll('input[type="date"]').forEach(input => {
+            input.addEventListener('paste', function(e) {
+                e.preventDefault();
+                const pastedData = e.clipboardData.getData('text');
+                const parsedDate = parseDateFromString(pastedData);
+                if (parsedDate) {
+                    this.value = parsedDate;
+                } else {
+                    this.value = pastedData;
+                }
+            });
+        });
+
+        function loadEmployees() {
+            return fetch('/employees/list')
+                .then(r => r.json())
+                .then(data => { employees = data; });
+        }
+
+        function loadInvoices() {
+            return fetch('/invoices/list?sort_by=date&sort_dir=desc')
+                .then(r => r.json())
+                .then(data => { invoices = data; });
+        }
+
+        function loadUnlinkedActs() {
+            const contractorId = document.getElementById('filterContractor').value;
+            const responsible = document.getElementById('filterResponsible').value;
+            const dateFrom = document.getElementById('filterDateFrom').value;
+            const dateTo = document.getElementById('filterDateTo').value;
+            
+            let url = '/acts/unlinked?';
+            if (contractorId) url += 'contractor_id=' + contractorId + '&';
+            if (responsible) url += 'responsible_manager=' + encodeURIComponent(responsible) + '&';
+            if (dateFrom) url += 'date_from=' + dateFrom + '&';
+            if (dateTo) url += 'date_to=' + dateTo + '&';
+            
+            fetch(url)
+                .then(r => r.json())
+                .then(acts => {
+                    allActs = acts;
+                    currentPage = 1;
+                    renderCurrentPage();
+                });
+        }
+
+        function renderCurrentPage() {
+            let paginated;
+            if (pageSize === 0) {
+                paginated = allActs;
+            } else {
+                const start = (currentPage - 1) * pageSize;
+                paginated = allActs.slice(start, start + pageSize);
+            }
+            renderUnlinkedActs(paginated);
+            renderPagination();
+        }
+
+        function renderUnlinkedActs(acts) {
+            const body = document.getElementById('unlinkedActsBody');
+            body.innerHTML = '';
+
+            if (acts.length === 0 && allActs.length === 0) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'data-row-wrapper';
+                wrapper.innerHTML = '<div class="data-row" style="grid-template-columns: 1fr;"><div class="data-cell text-center text-muted">Нет непривязанных актов</div></div>';
+                body.appendChild(wrapper);
+                return;
+            }
+
+            acts.forEach(act => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'data-row-wrapper';
+                wrapper.dataset.actId = act.id;
+
+                let employeeOptions = '<option value="">-</option>';
+                employees.forEach(e => {
+                    const fullName = `${e.last_name} ${e.first_name}${e.middle_name ? ' ' + e.middle_name : ''}`;
+                    const selected = act.responsible_manager === fullName ? ' selected' : '';
+                    employeeOptions += `<option value="${fullName}"${selected}>${fullName}</option>`;
+                });
+
+                let invoiceOptions = '<option value="">-- Выбрать счет --</option>';
+                invoices.forEach(inv => {
+                    invoiceOptions += `<option value="${inv.id}">${inv.number} - ${inv.contractor_name || ''} (${Number(inv.amount).toFixed(2)})</option>`;
+                });
+
+                const row = document.createElement('div');
+                row.className = 'data-row';
+                row.innerHTML = `
+                    <div class="data-cell">${act.number}</div>
+                    <div class="data-cell">${act.contractor_name || ''}</div>
+                    <div class="data-cell">${act.contractor_inn || ''}</div>
+                    <div class="data-cell">${act.signing_date || ''}</div>
+                    <div class="data-cell">${Number(act.amount).toFixed(2)}</div>
+                    <div class="data-cell">
+                        <select class="form-select form-select-sm" id="responsible-${act.id}">
+                            ${employeeOptions}
+                        </select>
+                    </div>
+                    <div class="data-cell">
+                        <select class="form-select form-select-sm" id="invoice-${act.id}">
+                            ${invoiceOptions}
+                        </select>
+                    </div>
+                    <div class="data-cell">
+                        <div class="action-buttons" style="display:flex;gap:4px;flex-wrap:nowrap;">
+                            <button class="btn btn-sm btn-success" onclick="applyChanges(${act.id})">Применить</button>
+                            <button class="btn btn-sm btn-danger" onclick="confirmDeleteAct(${act.id}, '${act.number}')">Удалить</button>
+                        </div>
+                    </div>
+                `;
+                wrapper.appendChild(row);
+                body.appendChild(wrapper);
+            });
+        }
+
+        function renderPagination() {
+            const bar = document.getElementById('paginationBar');
+            if (allActs.length === 0) { bar.innerHTML = ''; return; }
+            const totalPages = pageSize === 0 ? 1 : Math.ceil(allActs.length / pageSize);
+            let html = '';
+            html += `<a onclick="setPageSize(12)" class="${pageSize === 12 ? 'active' : ''}">12</a>`;
+            html += `<a onclick="setPageSize(24)" class="${pageSize === 24 ? 'active' : ''}">24</a>`;
+            html += `<input type="number" class="page-size-input form-control form-control-sm" id="customPageSize" min="1" value="${pageSize || ''}" placeholder="№" onkeydown="if(event.key==='Enter'){event.preventDefault();applyCustomPageSize();}">`;
+            html += `<a onclick="applyCustomPageSize()">Применить</a>`;
+            html += `<a onclick="showAll()">Все</a>`;
+            html += `<span style="margin-left:8px;"></span>`;
+            html += `<a onclick="goToPage(${currentPage - 1})" class="${currentPage <= 1 ? 'disabled' : ''}">Назад</a>`;
+            if (pageSize > 0) {
+                const maxVisible = 5;
+                let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+                let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+                if (endPage - startPage < maxVisible - 1) startPage = Math.max(1, endPage - maxVisible + 1);
+                if (startPage > 1) { html += `<a onclick="goToPage(1)">1</a>`; if (startPage > 2) html += `<span style="padding:4px">...</span>`; }
+                for (let i = startPage; i <= endPage; i++) html += `<a onclick="goToPage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</a>`;
+                if (endPage < totalPages) { if (endPage < totalPages - 1) html += `<span style="padding:4px">...</span>`; html += `<a onclick="goToPage(${totalPages})">Конец</a>`; }
+            }
+            html += `<a onclick="goToPage(${currentPage + 1})" class="${currentPage >= totalPages ? 'disabled' : ''}">Вперед</a>`;
+            html += `<span style="margin-left:8px;color:#888;font-size:0.85rem;">Всего: ${allActs.length}</span>`;
+            bar.innerHTML = html;
+        }
+
+        function setPageSize(size) { pageSize = size; currentPage = 1; renderCurrentPage(); }
+        function applyCustomPageSize() { const val = parseInt(document.getElementById('customPageSize').value); if (val > 0) { pageSize = val; currentPage = 1; renderCurrentPage(); } }
+        function showAll() { if (!confirm('Будут выведены все строки (' + allActs.length + '). Продолжить?')) return; pageSize = 0; currentPage = 1; renderCurrentPage(); }
+        function goToPage(page) { const totalPages = pageSize === 0 ? 1 : Math.ceil(allActs.length / pageSize); if (page < 1 || page > totalPages) return; currentPage = page; renderCurrentPage(); }
+
+        function applyChanges(actId) {
+            const responsibleManager = document.getElementById('responsible-' + actId).value;
+            const invoiceId = document.getElementById('invoice-' + actId).value;
+            
+            const formData = new FormData();
+            if (responsibleManager) {
+                formData.append('responsible_manager', responsibleManager);
+            }
+            if (invoiceId) {
+                formData.append('invoice_id', invoiceId);
+            }
+            
+            fetch('/act/update/' + actId, {
+                method: 'POST',
+                body: formData
+            }).then(r => r.json())
+              .then(result => {
+                  if (result.success) {
+                      loadUnlinkedActs();
+                  } else {
+                      alert('Ошибка: ' + (result.error || 'Unknown error'));
+                  }
+              });
+        }
+
+        function confirmDeleteAct(actId, actNumber) {
+            document.getElementById('deleteConfirmMessage').textContent = 'Вы уверены, что хотите удалить акт №' + actNumber + '?';
+            const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+            modal.show();
+            
+            document.getElementById('confirmDeleteBtn').onclick = function() {
+                fetch('/act/delete/' + actId, { method: 'POST' })
+                    .then(r => r.json())
+                    .then(result => {
+                        if (result.success) {
+                            modal.hide();
+                            loadUnlinkedActs();
+                        } else {
+                            alert('Ошибка удаления: ' + (result.error || 'Unknown error'));
+                        }
+                    });
+            };
+        }
+
+        loadEmployees().then(loadInvoices).then(loadUnlinkedActs);
+    </script>
+</body>
+</html>
