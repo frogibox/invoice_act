@@ -485,6 +485,7 @@ async def import_sbis(file: UploadFile = File(...)):
         for row in ws.iter_rows(min_row=2):
             try:
                 doc_type = str(row[col_map["Тип документа"] - 1].value or "").strip()
+                package_type = str(row[col_map["Тип пакета"] - 1].value or "").strip()
                 status = str(row[col_map["Статус"] - 1].value or "").strip()
                 amount = parse_amount(row[col_map["Сумма"] - 1].value)
                 signing_date = parse_date(row[col_map["Завершено"] - 1].value)
@@ -504,12 +505,17 @@ async def import_sbis(file: UploadFile = File(...)):
                     "inn": inn,
                     "filename": filename,
                     "doc_type": doc_type,
+                    "package_type": package_type,
                     "status": status,
                     "import_status": "Импортирован",
                     "reasons": [],
                 }
 
-                if doc_type in ("ЭДОСч", "ДокОтгрИсх"):
+                is_dokotgr_ish_with_empty_doc = (
+                    package_type == "ДокОтгрИсх" and not doc_type
+                )
+
+                if doc_type == "ЭДОСч" and not is_dokotgr_ish_with_empty_doc:
                     row_info["import_status"] = "Пропущен"
                     row_info["reasons"].append(f"Тип документа: {doc_type}")
                     skipped_type += 1
