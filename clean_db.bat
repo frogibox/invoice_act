@@ -10,7 +10,7 @@ echo.
 
 set /p confirm="Are you sure? This is IRREVERSIBLE. (Y / N or Enter): "
 
-if /i not "%confirm%"=="Y" (
+if not "%confirm%"=="Y" (
     echo Operation cancelled.
     pause
     exit /b 0
@@ -33,12 +33,10 @@ echo.
 
 set /p clear_stop_words="Clear stop words table? (Y / N or Enter): "
 
-if /i "%clear_stop_words%"=="Y" (
+if "%clear_stop_words%"=="Y" (
     echo Stop words table WILL be cleared.
-    set DO_CLEAR_STOP_WORDS=1
 ) else (
     echo Stop words table will be kept.
-    set DO_CLEAR_STOP_WORDS=0
 )
 
 echo.
@@ -52,12 +50,10 @@ echo.
 
 set /p clear_employees="Clear employees table? (Y / N or Enter): "
 
-if /i "%clear_employees%"=="Y" (
+if "%clear_employees%"=="Y" (
     echo Employees table WILL be cleared.
-    set DO_CLEAR_EMPLOYEES=1
 ) else (
     echo Employees table will be kept.
-    set DO_CLEAR_EMPLOYEES=0
 )
 
 echo.
@@ -89,7 +85,7 @@ echo.
 
 set /p delete_confirm="Proceed with deletion? (Y / N or Enter): "
 
-if /i not "%delete_confirm%"=="Y" (
+if not "%delete_confirm%"=="Y" (
     echo Operation cancelled.
     pause
     exit /b 0
@@ -115,12 +111,12 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-if "%DO_CLEAR_EMPLOYEES%"=="1" (
+if "%clear_employees%"=="Y" (
     echo Clearing employees table...
     .venv\Scripts\python.exe -c "from src.database import get_session, Employee; session = get_session(); session.query(Employee).delete(); session.commit(); session.close()"
 )
 
-if "%DO_CLEAR_STOP_WORDS%"=="1" (
+if "%clear_stop_words%"=="Y" (
     echo Clearing stop words table...
     .venv\Scripts\python.exe -c "from src.database import get_session, StopWord; session = get_session(); session.query(StopWord).delete(); session.commit(); session.close()"
 )
