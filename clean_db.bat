@@ -1,4 +1,5 @@
 @echo off
+setlocal EnableDelayedExpansion
 
 cd /d "%~dp0"
 
@@ -8,7 +9,7 @@ echo ========================================
 echo.
 echo Press Y to continue, or press N or Enter to cancel.
 echo.
-set /p confirm="Are you sure? This is IRREVERSIBLE! (Y / N or Enter): "
+set /p confirm="Are you sure? This is IRREVERSIBLE. (Y / N or Enter): "
 
 if /i not "%confirm%"=="Y" (
     echo Operation cancelled.
