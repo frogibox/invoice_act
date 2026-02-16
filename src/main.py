@@ -90,13 +90,13 @@ def normalize_contractor_name(name: str) -> str:
     return name.strip()
 
 
-def parse_date(value) -> Optional[date]:
+def parse_datetime(value) -> Optional[datetime]:
     if value is None or value == "":
         return None
     if isinstance(value, datetime):
-        return value.date()
-    if isinstance(value, date):
         return value
+    if isinstance(value, date):
+        return datetime.combine(value, datetime.min.time())
     if isinstance(value, (int, float)):
         try:
             return datetime(1899, 12, 30) + datetime.timedelta(days=int(value))
@@ -121,10 +121,15 @@ def parse_date(value) -> Optional[date]:
         ]
         for fmt in formats_with_time:
             try:
-                return datetime.strptime(value, fmt).date()
+                return datetime.strptime(value, fmt)
             except:
                 continue
     return None
+
+
+def parse_date(value) -> Optional[date]:
+    dt = parse_datetime(value)
+    return dt.date() if dt else None
 
 
 def parse_amount(value) -> Optional[float]:
@@ -497,7 +502,7 @@ async def import_sbis(file: UploadFile = File(...)):
                 package_type = str(row[col_map["Тип пакета"] - 1].value or "").strip()
                 status = str(row[col_map["Статус"] - 1].value or "").strip()
                 amount = parse_amount(row[col_map["Сумма"] - 1].value)
-                signing_date = parse_date(row[col_map["Завершено"] - 1].value)
+                signing_datetime = parse_datetime(row[col_map["Завершено"] - 1].value)
                 number = str(row[col_map["Номер"] - 1].value or "").strip()
                 contractor_name = str(
                     row[col_map["Контрагент"] - 1].value or ""
@@ -508,7 +513,9 @@ async def import_sbis(file: UploadFile = File(...)):
 
                 row_info = {
                     "number": number,
-                    "date": signing_date.strftime("%d.%m.%Y") if signing_date else "",
+                    "date": signing_datetime.strftime("%d.%m.%Y %H:%M")
+                    if signing_datetime
+                    else "",
                     "amount": amount,
                     "contractor": contractor_name,
                     "inn": inn,
@@ -542,19 +549,19 @@ async def import_sbis(file: UploadFile = File(...)):
                         row_info["reasons"].append("Сумма = 0 или пустая")
                         skipped_empty += 1
 
-                if not signing_date:
+                if not signing_datetime:
                     if row_info["import_status"] == "Импортирован":
                         row_info["import_status"] = "Пропущен"
                     row_info["reasons"].append("Дата подписания (Завершено) пустая")
                     skipped_empty += 1
 
                 is_duplicate = False
-                if number and signing_date and amount and amount != 0:
+                if number and signing_datetime and amount and amount != 0:
                     existing = (
                         session.query(Act)
                         .filter(
                             Act.number == number,
-                            Act.signing_date == signing_date,
+                            Act.signing_date == signing_datetime,
                             Act.amount == amount,
                         )
                         .first()
@@ -576,7 +583,7 @@ async def import_sbis(file: UploadFile = File(...)):
                     act = Act(
                         number=number,
                         filename=filename,
-                        signing_date=signing_date,
+                        signing_date=signing_datetime,
                         amount=amount,
                         contractor_id=contractor.id,
                     )
@@ -914,7 +921,7 @@ def get_free_acts(contractor_id: int):
             {
                 "id": a.id,
                 "number": a.number,
-                "signing_date": a.signing_date.strftime("%d.%m.%Y")
+                "signing_date": a.signing_date.strftime("%d.%m.%Y %H:%M")
                 if a.signing_date
                 else "",
                 "amount": a.amount,
@@ -1144,7 +1151,7 @@ def get_acts_by_invoice(invoice_id: int):
             {
                 "id": a.id,
                 "number": a.number,
-                "signing_date": a.signing_date.strftime("%d.%m.%Y")
+                "signing_date": a.signing_date.strftime("%d.%m.%Y %H:%M")
                 if a.signing_date
                 else "",
                 "amount": a.amount,

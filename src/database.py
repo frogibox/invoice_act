@@ -72,7 +72,7 @@ class Act(Base):
     created_at = Column(DateTime, default=datetime.now)
     number = Column(Text)
     filename = Column(Text)
-    signing_date = Column(Date)
+    signing_date = Column(DateTime)
     amount = Column(Float)
     contractor_id = Column(Integer, ForeignKey("contractors.id"))
     invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=True)
