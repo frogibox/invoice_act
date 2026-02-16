@@ -65,6 +65,10 @@
             word-break: break-word;
         }
         .data-header .data-cell { white-space: nowrap; }
+        .data-header .data-cell.sortable { cursor: pointer; }
+        .data-header .data-cell.sortable:hover { background-color: #dee2e6; }
+        .data-header .data-cell.sort-asc::after { content: " ▲"; }
+        .data-header .data-cell.sort-desc::after { content: " ▼"; }
         .action-buttons .btn { white-space: nowrap; padding: 0.2rem 0.5rem; }
         .pagination-bar {
             display: flex; align-items: center; gap: 8px; padding: 8px 0; flex-wrap: wrap; font-size: 0.9rem;
@@ -139,13 +143,13 @@
         
         <div class="table-wrapper">
             <div class="data-header" style="--cols: minmax(70px, 0.8fr) minmax(120px, 3fr) minmax(85px, 0.9fr) minmax(100px, 1fr) minmax(80px, 0.8fr) minmax(120px, 1.5fr) minmax(100px, 1.5fr) minmax(220px, 2fr);">
-                    <div class="data-cell">№ акта</div>
-                    <div class="data-cell">Контрагент</div>
-                    <div class="data-cell">ИНН</div>
-                    <div class="data-cell">Дата подписания</div>
-                    <div class="data-cell">Сумма</div>
-                    <div class="data-cell">Ответственный менеджер</div>
-                    <div class="data-cell">Привязан к счету</div>
+                    <div class="data-cell sortable" data-sort="number" onclick="sortBy('number')">№ акта</div>
+                    <div class="data-cell sortable" data-sort="contractor_name" onclick="sortBy('contractor_name')">Контрагент</div>
+                    <div class="data-cell sortable" data-sort="contractor_inn" onclick="sortBy('contractor_inn')">ИНН</div>
+                    <div class="data-cell sortable" data-sort="signing_date" onclick="sortBy('signing_date')">Дата подписания</div>
+                    <div class="data-cell sortable" data-sort="amount" onclick="sortBy('amount')">Сумма</div>
+                    <div class="data-cell sortable" data-sort="responsible_manager" onclick="sortBy('responsible_manager')">Ответственный менеджер</div>
+                    <div class="data-cell sortable" data-sort="invoice_number" onclick="sortBy('invoice_number')">Привязан к счету</div>
                     <div class="data-cell">Действия</div>
             </div>
             <div class="data-table" id="linkedActsTable" style="--cols: minmax(70px, 0.8fr) minmax(120px, 3fr) minmax(85px, 0.9fr) minmax(100px, 1fr) minmax(80px, 0.8fr) minmax(120px, 1.5fr) minmax(100px, 1.5fr) minmax(220px, 2fr);">
@@ -209,6 +213,25 @@
         let allActs = [];
         let pageSize = 12;
         let currentPage = 1;
+        let currentSort = { field: 'signing_date', direction: 'desc' };
+        
+        function sortBy(field) {
+            if (currentSort.field === field) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.field = field;
+                currentSort.direction = 'asc';
+            }
+            
+            document.querySelectorAll('.data-header .data-cell.sortable').forEach(cell => {
+                cell.classList.remove('sort-asc', 'sort-desc');
+                if (cell.dataset.sort === currentSort.field) {
+                    cell.classList.add(currentSort.direction === 'asc' ? 'sort-asc' : 'sort-desc');
+                }
+            });
+            
+            loadLinkedActs();
+        }
         
         function parseDateFromString(value) {
             if (!value) return null;
@@ -290,6 +313,7 @@
             if (responsible) url += 'responsible_manager=' + encodeURIComponent(responsible) + '&';
             if (dateFrom) url += 'date_from=' + dateFrom + '&';
             if (dateTo) url += 'date_to=' + dateTo + '&';
+            url += 'sort_by=' + currentSort.field + '&sort_dir=' + currentSort.direction;
             
             fetch(url)
                 .then(r => r.json())

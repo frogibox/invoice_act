@@ -865,6 +865,8 @@ def get_linked_acts(
     responsible_manager: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
+    sort_by: Optional[str] = "signing_date",
+    sort_dir: Optional[str] = "desc",
 ):
     session = get_session()
     try:
@@ -890,7 +892,28 @@ def get_linked_acts(
             if to_date:
                 query = query.filter(Act.signing_date <= to_date)
 
-        acts = query.order_by(Act.signing_date.desc()).all()
+        sort_mapping = {
+            "signing_date": Act.signing_date,
+            "contractor_name": Contractor.name,
+            "contractor_inn": Contractor.inn,
+            "amount": Act.amount,
+            "responsible_manager": Act.responsible_manager,
+            "invoice_number": Invoice.number,
+        }
+
+        sort_column = sort_mapping.get(sort_by, Act.signing_date)
+
+        if sort_by in ["contractor_name", "contractor_inn"]:
+            query = query.join(Contractor, Act.contractor_id == Contractor.id)
+        elif sort_by == "invoice_number":
+            query = query.join(Invoice, Act.invoice_id == Invoice.id)
+
+        if sort_dir == "desc":
+            query = query.order_by(sort_column.desc())
+        else:
+            query = query.order_by(sort_column)
+
+        acts = query.all()
 
         result = []
         for act in acts:
@@ -928,6 +951,8 @@ def get_unlinked_acts(
     responsible_manager: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
+    sort_by: Optional[str] = "signing_date",
+    sort_dir: Optional[str] = "desc",
 ):
     session = get_session()
     try:
@@ -953,7 +978,25 @@ def get_unlinked_acts(
             if to_date:
                 query = query.filter(Act.signing_date <= to_date)
 
-        acts = query.order_by(Act.signing_date.desc()).all()
+        sort_mapping = {
+            "signing_date": Act.signing_date,
+            "contractor_name": Contractor.name,
+            "contractor_inn": Contractor.inn,
+            "amount": Act.amount,
+            "responsible_manager": Act.responsible_manager,
+        }
+
+        sort_column = sort_mapping.get(sort_by, Act.signing_date)
+
+        if sort_by in ["contractor_name", "contractor_inn"]:
+            query = query.join(Contractor, Act.contractor_id == Contractor.id)
+
+        if sort_dir == "desc":
+            query = query.order_by(sort_column.desc())
+        else:
+            query = query.order_by(sort_column)
+
+        acts = query.all()
 
         result = []
         for act in acts:
