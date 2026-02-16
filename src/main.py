@@ -527,10 +527,11 @@ async def import_sbis(file: UploadFile = File(...)):
                     skipped_status += 1
 
                 if not amount or amount == 0:
-                    if row_info["import_status"] == "Импортирован":
-                        row_info["import_status"] = "Пропущен"
-                    row_info["reasons"].append("Сумма = 0 или пустая")
-                    skipped_empty += 1
+                    if package_type != "ДокОтгрИсх":
+                        if row_info["import_status"] == "Импортирован":
+                            row_info["import_status"] = "Пропущен"
+                        row_info["reasons"].append("Сумма = 0 или пустая")
+                        skipped_empty += 1
 
                 if not signing_date:
                     if row_info["import_status"] == "Импортирован":
