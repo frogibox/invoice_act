@@ -29,9 +29,14 @@ class TestEmployeesAPI:
         """Тест: массовое добавление сотрудников"""
         response = client.post(
             "/employees/bulk-add",
-            data={"employees": "Петров Петр\nСидоров Алексей"},
+            json={
+                "employees": [
+                    {"first_name": "Петр", "last_name": "Петров"},
+                    {"first_name": "Алексей", "last_name": "Сидоров"},
+                ]
+            },
         )
-        assert response.status_code in (200, 302, 303)
+        assert response.status_code in (200, 201, 302, 303)
 
     def test_list_employees(self, client):
         """Тест: получение списка сотрудников"""
