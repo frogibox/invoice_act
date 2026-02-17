@@ -70,6 +70,10 @@
             text-overflow: ellipsis;
             word-break: break-word;
         }
+        .data-cell.nowrap {
+            white-space: nowrap;
+            overflow: visible;
+        }
         input[type=number]::-webkit-outer-spin-button,
         input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
@@ -136,7 +140,7 @@
 
         <h5 class="mt-4">Счета</h5>
         <div class="table-wrapper">
-            <div class="data-header" id="invoicesHeader" style="--cols: 40px 10px minmax(70px, 0.8fr) minmax(90px, 1fr) minmax(100px, 1.2fr) minmax(100px, 1.2fr) minmax(100px, 1.2fr) minmax(100px, 1.2fr) minmax(60px, 0.7fr) minmax(130px, 1.5fr) minmax(160px, 2fr) minmax(150px, 1.8fr) minmax(150px, 1.8fr) 40px;">
+            <div class="data-header" id="invoicesHeader" style="--cols: 40px 10px minmax(70px, 0.8fr) minmax(90px, 1fr) minmax(100px, 1.2fr) minmax(100px, 1.2fr) minmax(100px, 1.2fr) minmax(100px, 1.2fr) minmax(60px, 0.7fr) minmax(180px, 2fr) minmax(160px, 2fr) minmax(150px, 1.8fr) minmax(150px, 1.8fr) 40px;">
                 <div class="data-cell"></div>
                 <div class="data-cell"></div>
                 <div class="data-cell sortable" data-sort="number" onclick="sortInvoices('number')">№ счета</div>
@@ -151,21 +155,21 @@
                 <div class="data-cell sortable wrap-header" data-sort="free_acts_count" onclick="sortInvoices('free_acts_count')">Свободные акты</div>
                 <div class="data-cell"></div>
             </div>
-            <div class="data-table" id="invoicesTable" style="--cols: 40px 10px minmax(70px, 0.8fr) minmax(90px, 1fr) minmax(100px, 1.2fr) minmax(100px, 1.2fr) minmax(100px, 1.2fr) minmax(100px, 1.2fr) minmax(60px, 0.7fr) minmax(130px, 1.5fr) minmax(160px, 2fr) minmax(150px, 1.8fr) minmax(150px, 1.8fr) 40px;">
+            <div class="data-table" id="invoicesTable" style="--cols: 40px 10px minmax(70px, 0.8fr) minmax(90px, 1fr) minmax(100px, 1.2fr) minmax(100px, 1.2fr) minmax(100px, 1.2fr) minmax(100px, 1.2fr) minmax(60px, 0.7fr) minmax(180px, 2fr) minmax(160px, 2fr) minmax(150px, 1.8fr) minmax(150px, 1.8fr) 40px;">
                 <div id="invoicesBody"></div>
             </div>
         </div>
 
         <h5 class="mt-4">Свободные акты</h5>
         <div class="table-wrapper">
-            <div class="data-header" id="actsHeader" style="--cols: minmax(100px, 1fr) minmax(120px, 1.3fr) minmax(110px, 1.2fr) minmax(180px, 2fr) minmax(200px, 2.5fr);">
+            <div class="data-header" id="actsHeader" style="--cols: minmax(100px, 1fr) minmax(120px, 1.3fr) minmax(110px, 1.2fr) minmax(200px, 2.5fr) minmax(200px, 2.5fr);">
                 <div class="data-cell sortable" data-sort="number" onclick="sortActs('number')">№ акта</div>
                 <div class="data-cell sortable" data-sort="signing_date" onclick="sortActs('signing_date')">Дата подписания</div>
                 <div class="data-cell sortable" data-sort="amount" onclick="sortActs('amount')">Сумма</div>
                 <div class="data-cell sortable" data-sort="responsible_manager" onclick="sortActs('responsible_manager')">Ответственный менеджер</div>
-                <div class="data-cell">Действия</div>
+                <div class="data-cell">Привязать к счету</div>
             </div>
-            <div class="data-table" style="--cols: minmax(100px, 1fr) minmax(120px, 1.3fr) minmax(110px, 1.2fr) minmax(180px, 2fr) minmax(200px, 2.5fr);">
+            <div class="data-table" style="--cols: minmax(100px, 1fr) minmax(120px, 1.3fr) minmax(110px, 1.2fr) minmax(200px, 2.5fr) minmax(200px, 2.5fr);">
                 <div id="unlinkedActsBody"></div>
             </div>
         </div>
@@ -223,8 +227,27 @@
             return name;
         }
 
+        function getEmployeeOptions(selectedName) {
+            let options = '<option value="">-</option>';
+            employees.forEach(e => {
+                const fullName = `${e.last_name} ${e.first_name}${e.middle_name ? ' ' + e.middle_name : ''}`;
+                const selected = selectedName === fullName ? ' selected' : '';
+                options += `<option value="${fullName}"${selected}>${fullName}</option>`;
+            });
+            return options;
+        }
+
+        function getInvoiceOptions(selectedId) {
+            let options = '<option value="">-- Выбрать счет --</option>';
+            invoicesData.forEach(inv => {
+                const selected = selectedId == inv.id ? ' selected' : '';
+                options += `<option value="${inv.id}"${selected}>${inv.number} (${Number(inv.amount).toFixed(2)})</option>`;
+            });
+            return options;
+        }
+
         function loadEmployees() {
-            fetch('/employees/list')
+            return fetch('/employees/list')
                 .then(r => r.json())
                 .then(data => {
                     employees = data.sort((a, b) => {
@@ -349,14 +372,14 @@
                            onkeydown="return event.keyCode !== 189 && event.keyCode !== 109 && event.key !== '-'"
                            oninput="if(this.value < 0) this.value = Math.abs(this.value)"
                            onchange="calculateDeadline(${inv.id}, this.value, this)"></div>
-                    <div class="data-cell">${formatName(inv.responsible_import) || ''}</div>
+                    <div class="data-cell">
+                        <select class="form-select form-select-sm" onchange="updateInvoice(${inv.id}, 'responsible_import', this.value)">
+                            ${getEmployeeOptions(inv.responsible_import)}
+                        </select>
+                    </div>
                     <div class="data-cell">
                         <select class="form-select form-select-sm" onchange="updateInvoice(${inv.id}, 'motivated_person', this.value)">
-                            <option value="">-</option>
-                            ${employees.map(e => {
-                                const fullName = `${e.last_name} ${e.first_name}${e.middle_name ? ' ' + e.middle_name : ''}`;
-                                return `<option value="${fullName}" ${inv.motivated_person === fullName ? 'selected' : ''}>${fullName}</option>`;
-                            }).join('')}
+                            ${getEmployeeOptions(inv.motivated_person)}
                         </select>
                     </div>
                     <div class="data-cell">${inv.acts_count ? inv.acts_count + ' (' + inv.acts_sum.toFixed(2) + ')' : '-'}</div>
@@ -482,23 +505,30 @@
                            oninput="if(this.value < 0) this.value = Math.abs(this.value)"
                            onchange="updateAmount(${act.id}, this.value)"></div>
                     <div class="data-cell">
-                        <select class="form-select form-select-sm" id="responsible-${act.id}">
-                            <option value="">-</option>
-                            ${employees.map(e => {
-                                const fullName = `${e.last_name} ${e.first_name}${e.middle_name ? ' ' + e.middle_name : ''}`;
-                                const selected = act.responsible_manager === fullName ? ' selected' : '';
-                                return `<option value="${fullName}"${selected}>${fullName}</option>`;
-                            }).join('')}
+                        <select class="form-select form-select-sm" id="responsible-${act.id}" onchange="updateActField(${act.id}, 'responsible_manager', this.value)">
+                            ${getEmployeeOptions(act.responsible_manager)}
                         </select>
                     </div>
                     <div class="data-cell">
-                        <div class="action-buttons" style="display:flex;gap:4px;flex-wrap:nowrap;">
-                            <button class="btn btn-sm btn-success" onclick="applyChanges(${act.id})">Применить</button>
-                            <button class="btn btn-sm btn-danger" onclick="confirmDeleteAct(${act.id}, '${act.number}')">Удалить</button>
-                        </div>
+                        <select class="form-select form-select-sm" id="invoice-${act.id}">
+                            ${getInvoiceOptions(null)}
+                        </select>
                     </div>
                 `;
                 wrapper.appendChild(row);
+                
+                const actionsRow = document.createElement('div');
+                actionsRow.className = 'data-row';
+                actionsRow.style.gridColumn = '1 / -1';
+                actionsRow.innerHTML = `
+                    <div class="data-cell" style="display:flex;gap:4px;flex-wrap:nowrap;">
+                        <button class="btn btn-sm btn-success" onclick="applyActChanges(${act.id})">Применить</button>
+                        <button class="btn btn-sm btn-primary" onclick="linkActDirect(${act.id})">Привязать к выбранному счету</button>
+                        <button class="btn btn-sm btn-danger" onclick="confirmDeleteAct(${act.id}, '${act.number}')">Удалить</button>
+                    </div>
+                `;
+                wrapper.appendChild(actionsRow);
+                
                 body.appendChild(wrapper);
             });
             
@@ -552,7 +582,11 @@
               });
         }
 
-        function applyChanges(actId) {
+        function updateActField(actId, field, value) {
+            // Just update local state, actual save on button click
+        }
+
+        function applyActChanges(actId) {
             const responsibleSelect = document.getElementById('responsible-' + actId);
             const amountInput = document.getElementById('amount-' + actId);
             
@@ -564,6 +598,31 @@
             if (amount >= 0) formData.append('amount', amount);
 
             fetch('/act/update/' + actId, {
+                method: 'POST',
+                body: formData
+            }).then(r => r.json())
+              .then(result => {
+                  if (result.success) {
+                      location.reload();
+                  } else {
+                      alert('Ошибка: ' + (result.error || 'Unknown error'));
+                  }
+              });
+        }
+
+        function linkActDirect(actId) {
+            const invoiceSelect = document.getElementById('invoice-' + actId);
+            const invoiceId = invoiceSelect ? invoiceSelect.value : '';
+            
+            if (!invoiceId) {
+                alert('Выберите счёт из списка');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('invoice_id', invoiceId);
+            
+            fetch('/act/link/' + actId, {
                 method: 'POST',
                 body: formData
             }).then(r => r.json())
@@ -639,11 +698,10 @@
                 });
         }
 
-        loadEmployees();
-        renderInvoices();
-        updateSortIndicatorsInvoices();
-        renderUnlinkedActs();
-        updateSortIndicatorsActs();
+        loadEmployees().then(() => {
+            renderInvoices();
+            renderUnlinkedActs();
+        });
     </script>
 </body>
 </html>
