@@ -52,9 +52,6 @@ uv add <package_name>
 
 # Add a dev dependency
 uv add --dev <package_name>
-
-# Install dependencies
-uv pip install -e .
 ```
 
 ### Database Management
