@@ -153,7 +153,7 @@
                 <div class="data-cell sortable" data-sort="motivated_person" onclick="sortInvoices('motivated_person')">Мотивируемый</div>
                 <div class="data-cell sortable wrap-header" data-sort="acts_count" onclick="sortInvoices('acts_count')">Акты</div>
                 <div class="data-cell sortable wrap-header" data-sort="free_acts_count" onclick="sortInvoices('free_acts_count')">Свободные акты</div>
-                <div class="data-cell"></div>
+                <div class="data-cell">Действия</div>
             </div>
             <div class="data-table" id="invoicesTable" style="--cols: 40px 10px minmax(70px, 0.8fr) minmax(90px, 1fr) minmax(100px, 1.2fr) minmax(100px, 1.2fr) minmax(100px, 1.2fr) minmax(100px, 1.2fr) minmax(60px, 0.7fr) minmax(180px, 2fr) minmax(160px, 2fr) minmax(150px, 1.8fr) minmax(150px, 1.8fr) 40px;">
                 <div id="invoicesBody"></div>
@@ -385,7 +385,7 @@
                     </div>
                     <div class="data-cell">${inv.acts_count ? inv.acts_count + ' (' + inv.acts_sum.toFixed(2) + ')' : '-'}</div>
                     <div class="data-cell">${inv.free_acts_count > 0 ? inv.free_acts_count : '-'}</div>
-                    <div class="data-cell data-cell-btn"><button class="btn btn-sm btn-danger" onclick="confirmDeleteInvoice(${inv.id}, '${inv.number}')">X</button></div>
+                    <div class="data-cell data-cell-btn"><button class="btn btn-sm btn-danger" onclick="confirmDeleteInvoice(${inv.id}, '${inv.number}')">Удалить</button></div>
                 `;
                 wrapper.appendChild(row);
 
