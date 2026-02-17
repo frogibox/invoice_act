@@ -1092,7 +1092,7 @@ def get_unlinked_acts(
     try:
         query = (
             session.query(Act)
-            .filter(Act.invoice_id is None)
+            .filter(Act.invoice_id.is_(None))
             .options(joinedload(Act.contractor))
         )
 
