@@ -15,7 +15,7 @@ class TestNormalizeContractorName:
 
     def test_remove_quotes(self):
         """Тест: удаление кавычек"""
-        assert normalize_contractor_name('ТехноДрайв"СТРОЙ"') == "технодрайв стро"
+        assert normalize_contractor_name('ТехноДрайв"СТРОЙ"') == "технодрайв строй"
 
     def test_remove_extra_spaces(self):
         """Тест: удаление лишних пробелов"""
@@ -50,7 +50,7 @@ class TestFormatContractorName:
 
     def test_capitalize_words(self):
         """Тест: капитализация слов"""
-        assert format_contractor_name("технодрайв ооо") == "ТехноДрайв ООО"
+        assert format_contractor_name("технодрайв ооо") == "Технодрайв ООО"
 
     def test_legal_forms_uppercase(self):
         """Тест: юридические формы в верхний регистр"""
