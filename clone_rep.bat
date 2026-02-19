@@ -17,7 +17,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-git remote add origin https://github.com/greenkerokero/invoice_act.git
+git remote add origin http://github.com/frogibox/invoice_act.git
 if errorlevel 1 (
     echo Error: failed to add remote origin
     echo Possibly remote already exists

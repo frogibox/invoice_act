@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 :: --- НАСТРОЙКИ ---
-set REPO_URL=https://github.com/greenkerokero/invoice_act.git
+set REPO_URL=http://github.com/frogibox/invoice_act.git
 set BRANCH=main
 
 echo ========================================================
