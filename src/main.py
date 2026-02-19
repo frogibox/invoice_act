@@ -1288,8 +1288,6 @@ def list_invoices_filtered(
 ):
     session = get_session()
     try:
-        from sqlalchemy import case
-
         query = session.query(Invoice)
 
         if contractor_id:
@@ -1325,16 +1323,14 @@ def list_invoices_filtered(
         if sort_by in ["contractor_name", "contractor_inn"]:
             query = query.join(Contractor, Invoice.contractor_id == Contractor.id)
 
-        payment_date_nulls_last = case((Invoice.payment_date.is_(None), 1), else_=0)
-
         if sort_by in ["acts_count", "free_acts_count"]:
             invoices = query.options(joinedload(Invoice.contractor)).all()
         elif sort_dir == "desc":
             sort_column = sort_column.desc()
-            query = query.order_by(payment_date_nulls_last.asc(), sort_column)
+            query = query.order_by(sort_column)
             invoices = query.options(joinedload(Invoice.contractor)).all()
         else:
-            query = query.order_by(payment_date_nulls_last.asc(), sort_column)
+            query = query.order_by(sort_column)
             invoices = query.options(joinedload(Invoice.contractor)).all()
 
         invoice_ids = [inv.id for inv in invoices]
