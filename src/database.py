@@ -8,6 +8,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Text,
+    inspect,
 )
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 import os
@@ -55,6 +56,7 @@ class Invoice(Base):
     organization_group = Column(Text)
     responsible_import = Column(Text)
     comment = Column(Text)
+    justification = Column(Text, nullable=True)
     deadline = Column(Date, nullable=True)
     deadline_days = Column(Integer, nullable=True)
     payment_date = Column(Date, nullable=True)
@@ -99,6 +101,18 @@ def get_session():
 def init_db():
     engine = get_engine()
     Base.metadata.create_all(engine)
+    _migrate(engine)
+
+
+def _migrate(engine):
+    from sqlalchemy import text
+
+    insp = inspect(engine)
+    if insp.has_table("invoices"):
+        columns = [col["name"] for col in insp.get_columns("invoices")]
+        if "justification" not in columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE invoices ADD COLUMN justification TEXT"))
 
 
 def clear_db(keep_employees: bool = False, keep_stop_words: bool = False):

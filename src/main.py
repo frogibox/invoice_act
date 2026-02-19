@@ -687,6 +687,7 @@ def update_invoice(
     payment_date: Optional[str] = Form(None),
     deadline: Optional[str] = Form(None),
     motivated_person: Optional[str] = Form(None),
+    justification: Optional[str] = Form(None),
 ):
     session = get_session()
     try:
@@ -698,6 +699,8 @@ def update_invoice(
                 invoice.deadline = parse_date(deadline)
             if motivated_person is not None:
                 invoice.motivated_person = motivated_person
+            if justification is not None:
+                invoice.justification = justification
             session.commit()
         return {"success": True}
     finally:
@@ -1379,6 +1382,7 @@ def list_invoices_filtered(
                     "contractor_id": inv.contractor_id,
                     "contractor_name": contractor.name if contractor else "",
                     "contractor_inn": contractor.inn if contractor else "",
+                    "justification": inv.justification or "",
                     "payment_date": inv.payment_date.strftime("%Y-%m-%d")
                     if inv.payment_date
                     else "",
