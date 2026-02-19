@@ -1,72 +1,37 @@
 @echo off
 setlocal enabledelayedexpansion
+chcp 65001 >nul
+cd /d "%~dp0"
 
-:: --- SETTINGS ---
-set REPO_OWNER=frogibox
-set REPO_NAME=invoice_act
-set BRANCH=main
+echo Загрузка обновлений...
 
-echo ========================================
-echo   Invoice Act Tracker - Update
-echo   (no Git, via GitHub API)
-echo ========================================
-echo.
+:: Сброс файла блокировки при наличии локальных изменений
+git diff --name-only | findstr "uv.lock" >nul
+if not errorlevel 1 git checkout -- uv.lock
 
-:: 1. CHECK POWERSHELL
-where powershell >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [ERROR] PowerShell not found
-    pause
-    exit /b 1
+:: Проверка и сохранение локальных изменений
+git diff --quiet HEAD
+if errorlevel 1 (
+    git stash push -m "Auto-save before update"
+    set STASHED=1
+) else (
+    set STASHED=0
 )
 
-:: 2. FETCH FILE LIST AND DOWNLOAD
-echo [INFO] Fetching file list and downloading...
-echo.
+:: Получение изменений с сервера
+git pull origin main
 
-powershell -ExecutionPolicy Bypass -File "%~dp0update_helper.ps1" "%~dp0" "%REPO_OWNER%" "%REPO_NAME%" "%BRANCH%"
+:: Возврат локальных изменений
+if "%STASHED%"=="1" git stash pop
 
-if %errorlevel% neq 0 (
-    echo.
-    echo [ERROR] Failed to update files
-    pause
-    exit /b 1
-)
-
-:: 3. SYNC DEPENDENCIES
-echo.
-echo [INFO] Syncing dependencies...
-where uv >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [WARNING] uv not found, skipping dependency sync
-    goto :restart
-)
-
+echo Синхронизация зависимостей...
 uv sync
-if %errorlevel% neq 0 (
-    echo [WARNING] uv sync failed
-)
 
-:: 4. RESTART APPLICATION
-:restart
-echo.
-echo ========================================
-echo   Restarting application
-echo ========================================
-echo.
-
-echo Stopping uvicorn on port 8000...
+echo Остановка текущего процесса...
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8000 ^| findstr LISTENING') do (
     taskkill /F /PID %%a 2>nul
 )
 timeout /t 2 /nobreak >nul
 
-echo Starting application...
-start "PIPISKA" cmd /c ".venv\Scripts\uvicorn.exe src.main:app --host 127.0.0.1 --port 8000"
-
-echo.
-echo ========================================
-echo   Update completed!
-echo ========================================
-pause
-exit /b 0
+echo Запуск приложения...
+start "Invoice Act" cmd /c "uv run uvicorn src.main:app --host 127.0.0.1 --port 8000"
