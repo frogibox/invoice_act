@@ -179,13 +179,12 @@
         </div>
         
         <div class="table-wrapper">
-            <div class="data-header" style="--cols: 26px 6px minmax(60px, 0.8fr) minmax(90px, 1fr) minmax(120px, 3fr) minmax(85px, 0.9fr) minmax(80px, 1fr) minmax(115px, 1.2fr) minmax(115px, 1.2fr) minmax(45px, 0.5fr) minmax(110px, 1.3fr) minmax(140px, 1.8fr) minmax(70px, 0.8fr) minmax(85px, 0.8fr) 36px;">
+            <div class="data-header" style="--cols: 26px 6px minmax(60px, 0.8fr) minmax(90px, 1fr) minmax(120px, 3fr) minmax(80px, 1fr) minmax(115px, 1.2fr) minmax(115px, 1.2fr) minmax(45px, 0.5fr) minmax(110px, 1.3fr) minmax(140px, 1.8fr) minmax(70px, 0.8fr) minmax(85px, 0.8fr) 36px;">
                     <div class="data-cell"></div>
                     <div class="data-cell"></div>
                     <div class="data-cell">№ счета</div>
                     <div class="data-cell sortable" data-sort="date" onclick="sortBy('date')">Дата</div>
                     <div class="data-cell sortable" data-sort="contractor_name" onclick="sortBy('contractor_name')">Контрагент</div>
-                    <div class="data-cell sortable" data-sort="contractor_inn" onclick="sortBy('contractor_inn')">ИНН</div>
                     <div class="data-cell">Сумма</div>
                     <div class="data-cell sortable" data-sort="payment_date" onclick="sortBy('payment_date')">Дата оплаты</div>
                     <div class="data-cell sortable" data-sort="deadline" onclick="sortBy('deadline')">Дедлайн</div>
@@ -196,7 +195,7 @@
                     <div class="data-cell sortable wrap-header" data-sort="free_acts_count" onclick="sortBy('free_acts_count')">Свободные акты</div>
                     <div class="data-cell"></div>
             </div>
-            <div class="data-table" id="invoicesTable" style="--cols: 26px 6px minmax(60px, 0.8fr) minmax(90px, 1fr) minmax(120px, 3fr) minmax(85px, 0.9fr) minmax(80px, 1fr) minmax(115px, 1.2fr) minmax(115px, 1.2fr) minmax(45px, 0.5fr) minmax(110px, 1.3fr) minmax(140px, 1.8fr) minmax(70px, 0.8fr) minmax(85px, 0.8fr) 36px;">
+            <div class="data-table" id="invoicesTable" style="--cols: 26px 6px minmax(60px, 0.8fr) minmax(90px, 1fr) minmax(120px, 3fr) minmax(80px, 1fr) minmax(115px, 1.2fr) minmax(115px, 1.2fr) minmax(45px, 0.5fr) minmax(110px, 1.3fr) minmax(140px, 1.8fr) minmax(70px, 0.8fr) minmax(85px, 0.8fr) 36px;">
                 <div id="invoicesBody"></div>
             </div>
         </div>
@@ -515,7 +514,6 @@ invoices.forEach(inv => {
                     <div class="data-cell">${inv.number}</div>
                     <div class="data-cell">${inv.date}</div>
                     <div class="data-cell" title="${formatContractorName(inv.contractor_name) || ''}">${formatContractorName(inv.contractor_name) || ''} <a href="/contractor/${inv.contractor_id}" target="_blank" title="Открыть карточку контрагента" style="text-decoration:none; color:#667eea;">&#8599;</a></div>
-                    <div class="data-cell"><input type="text" class="form-control form-control-sm" style="width:100%" value="${inv.contractor_inn || ''}" onchange="updateInn(${inv.contractor_id}, this.value, this)"></div>
                     <div class="data-cell">${inv.amount.toFixed(2)}</div>
                     <div class="data-cell"><input type="date" class="form-control form-control-sm" value="${inv.payment_date || ''}" onchange="updateInvoice(${inv.id}, 'payment_date', this.value, this)"></div>
                     <div class="data-cell">${formatDateDMY(inv.deadline)}</div>
