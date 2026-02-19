@@ -77,8 +77,7 @@
         .data-cell input, .data-cell select { width: 100%; min-width: 0; }
         .data-cell select.form-select-sm { font-size: inherit; }
         .data-cell input.form-control-sm { font-size: inherit; }
-        .date-edit { cursor: pointer; position: relative; }
-        .date-hidden-input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+
         .data-cell-btn { overflow: visible; text-overflow: clip; }
         .nested-container {
             display: none;
@@ -517,7 +516,7 @@ invoices.forEach(inv => {
                     <div class="data-cell" title="${formatContractorName(inv.contractor_name) || ''}">${formatContractorName(inv.contractor_name) || ''} <a href="/contractor/${inv.contractor_id}" target="_blank" title="Открыть карточку контрагента" style="text-decoration:none; color:#667eea;">&#8599;</a></div>
                     <div class="data-cell"><input type="text" class="form-control form-control-sm" style="width:100%" value="${inv.contractor_inn || ''}" onchange="updateInn(${inv.contractor_id}, this.value, this)"></div>
                     <div class="data-cell">${inv.amount.toFixed(2)}</div>
-                    <div class="data-cell date-edit" onclick="this.querySelector('input').showPicker()"><span>${formatDateDMY(inv.payment_date)}</span><input type="date" class="date-hidden-input" value="${inv.payment_date || ''}" onchange="updateInvoice(${inv.id}, 'payment_date', this.value, this); this.parentElement.querySelector('span').textContent = formatDateDMY(this.value)"></div>
+                    <div class="data-cell"><input type="date" class="form-control form-control-sm" value="${inv.payment_date || ''}" onchange="updateInvoice(${inv.id}, 'payment_date', this.value, this)"></div>
                     <div class="data-cell">${formatDateDMY(inv.deadline)}</div>
                     <div class="data-cell"><input type="number" 
                            class="form-control form-control-sm days-input" 
