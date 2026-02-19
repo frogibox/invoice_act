@@ -1,5 +1,5 @@
-# update.ps1 - Обновление Invoice Act Tracker без Git
-# Запуск: powershell -ExecutionPolicy Bypass -File update.ps1
+# update.ps1 - Update Invoice Act Tracker without Git
+# Run: powershell -ExecutionPolicy Bypass -File update.ps1
 
 $ErrorActionPreference = "Stop"
 
@@ -21,15 +21,15 @@ $EXCLUDE_PATTERNS = @(
 )
 
 Write-Host "========================================" -ForegroundColor Magenta
-Write-Host "  Invoice Act Tracker - Обновление" -ForegroundColor Magenta
+Write-Host "  Invoice Act Tracker - Update" -ForegroundColor Magenta
 Write-Host "========================================" -ForegroundColor Magenta
 Write-Host ""
 
-Write-Host "Получение списка файлов из GitHub..." -ForegroundColor Cyan
+Write-Host "Fetching file list from GitHub..." -ForegroundColor Cyan
 try {
     $response = Invoke-RestMethod -Uri $API_URL -UseBasicParsing
 } catch {
-    Write-Host "[ОШИБКА] Не удалось получить список файлов: $_" -ForegroundColor Red
+    Write-Host "[ERROR] Failed to fetch file list: $_" -ForegroundColor Red
     pause
     exit 1
 }
@@ -68,26 +68,26 @@ foreach ($file in $files) {
         Write-Host "  [OK] $path" -ForegroundColor Green
         $updated++
     } catch {
-        Write-Host "  [ОШИБКА] $path : $_" -ForegroundColor Red
+        Write-Host "  [ERROR] $path : $_" -ForegroundColor Red
         $errors++
     }
 }
 
 Write-Host ""
-Write-Host "Обновлено: $updated | Пропущено: $skipped | Ошибок: $errors" -ForegroundColor Cyan
+Write-Host "Updated: $updated | Skipped: $skipped | Errors: $errors" -ForegroundColor Cyan
 Write-Host ""
 
-Write-Host "Синхронизация зависимостей..." -ForegroundColor Cyan
+Write-Host "Syncing dependencies..." -ForegroundColor Cyan
 where.exe uv >$null 2>$null
 if ($LASTEXITCODE -eq 0) {
     uv sync
 } else {
-    Write-Host "[ПРЕДУПРЕЖДЕНИЕ] uv не найден, пропуск синхронизации зависимостей" -ForegroundColor Yellow
+    Write-Host "[WARNING] uv not found, skipping dependency sync" -ForegroundColor Yellow
 }
 
 Write-Host ""
 
-Write-Host "Останавливаю uvicorn на порту 8000..." -ForegroundColor Cyan
+Write-Host "Stopping uvicorn on port 8000..." -ForegroundColor Cyan
 $connections = netstat -ano | Select-String ":8000\s+.*LISTENING"
 foreach ($conn in $connections) {
     $pid = ($conn -split '\s+')[-1]
@@ -95,11 +95,11 @@ foreach ($conn in $connections) {
 }
 Start-Sleep -Seconds 2
 
-Write-Host "Запускаю приложение..." -ForegroundColor Cyan
+Write-Host "Starting application..." -ForegroundColor Cyan
 Start-Process cmd -ArgumentList "/c", ".venv\Scripts\uvicorn.exe src.main:app --host 127.0.0.1 --port 8000" -WindowStyle Normal
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
-Write-Host "  Обновление завершено!" -ForegroundColor Green
+Write-Host "  Update completed!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 pause
