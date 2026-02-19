@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$API_URL = "https://api.github.com/repos/$RepoOwner/$RepoName/git/trees/$Branch`?recursive=1"
+$API_URL = "https://api.github.com/repos/$RepoOwner/$RepoName/git/trees/${Branch}?recursive=1"
 $RAW_URL = "https://raw.githubusercontent.com/$RepoOwner/$RepoName/$Branch"
 
 $EXCLUDE_PATTERNS = @(

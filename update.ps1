@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 $REPO_OWNER = "frogibox"
 $REPO_NAME = "invoice_act"
 $BRANCH = "main"
-$API_URL = "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/git/trees/$BRANCH`?recursive=1"
+$API_URL = "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/git/trees/${BRANCH}?recursive=1"
 $RAW_URL = "https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/$BRANCH"
 
 $EXCLUDE_PATTERNS = @(
