@@ -1411,6 +1411,11 @@ def list_invoices_filtered(
         session.close()
 
 
+@app.get("/contractors-list", response_class=HTMLResponse)
+def contractors_list_page(request: Request):
+    return templates.TemplateResponse("contractors_list.html", {"request": request})
+
+
 @app.get("/contractor/{contractor_id}", response_class=HTMLResponse)
 def contractor_page(request: Request, contractor_id: int):
     session = get_session()
@@ -1491,11 +1496,6 @@ def contractor_page(request: Request, contractor_id: int):
         )
     finally:
         session.close()
-
-
-@app.get("/contractors-list", response_class=HTMLResponse)
-def contractors_list_page(request: Request):
-    return templates.TemplateResponse("contractors_list.html", {"request": request})
 
 
 @app.get("/contractors/list")
