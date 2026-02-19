@@ -1009,7 +1009,7 @@ def get_linked_acts(
     try:
         query = (
             session.query(Act)
-            .filter(Act.invoice_id is not None)
+            .filter(Act.invoice_id.isnot(None))
             .options(joinedload(Act.contractor), joinedload(Act.invoice))
         )
 
