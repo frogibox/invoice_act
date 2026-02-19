@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Контрагенты - Учет счетов и актов</title>
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .form-control, .form-select {
+            border-color: #adb5bd; box-shadow: inset 0 1px 3px rgba(0,0,0,0.12);
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea; box-shadow: inset 0 1px 3px rgba(0,0,0,0.12), 0 0 0 0.2rem rgba(102,126,234,0.25);
+        }
+        .container { max-width: 2200px; }
+        .filter-zone { background-color: #fff; border-radius: 8px; padding: 10px; margin-bottom: 15px; }
+        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; padding-top: 0.3rem; padding-bottom: 0.3rem; }
+        .navbar-brand { padding-top: 0.2rem; padding-bottom: 0.2rem; font-size: 1rem; }
+        .nav-link { padding: 0.3rem 0.5rem !important; font-size: 0.9rem; }
+        .nav-link.active { 
+            font-weight: bold; 
+            text-decoration: underline;
+            background-color: rgba(255,255,255,0.15);
+            border-radius: 4px;
+        }
+
+        .data-table {
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            background: #fff;
+        }
+        .data-header {
+            display: grid;
+            grid-template-columns: var(--cols);
+            background-color: #e9ecef;
+            font-weight: bold;
+            border-bottom: 2px solid #dee2e6;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border: 1px solid #dee2e6;
+            border-radius: 4px 4px 0 0;
+        }
+        .data-header .data-cell { white-space: nowrap; }
+        .data-header .data-cell.sortable { cursor: pointer; user-select: none; }
+        .data-header .data-cell.sortable:hover { background-color: #d3d7db; }
+        .data-header .data-cell.sort-asc::after { content: ' ▲'; }
+        .data-header .data-cell.sort-desc::after { content: ' ▼'; }
+        .data-row-wrapper {
+            display: flex;
+            flex-direction: column;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .data-row {
+            display: grid;
+            grid-template-columns: var(--cols);
+            align-items: center;
+            padding: 4px 0;
+        }
+        .data-row:hover { background-color: #f8f9fa; }
+        .data-cell {
+            padding: 4px 6px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-break: break-word;
+        }
+        .pagination-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+            flex-wrap: wrap;
+            font-size: 0.9rem;
+        }
+        .pagination-bar a, .pagination-bar span.page-link-item {
+            cursor: pointer;
+            padding: 4px 8px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #495057;
+            background: #fff;
+            user-select: none;
+        }
+        .pagination-bar a:hover { background-color: #e9ecef; }
+        .pagination-bar a.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border-color: #667eea;
+        }
+        .pagination-bar a.disabled { opacity: 0.5; pointer-events: none; }
+        .page-size-input {
+            width: 55px;
+            text-align: center;
+            display: inline-block;
+            padding: 4px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark mb-3">
+        <div class="container">
+            <a class="navbar-brand" href="/">Учет счетов и актов</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link active" href="/contractors-list">Контрагенты</a>
+                <a class="nav-link" href="/">Счета</a>
+                <a class="nav-link" href="/linked-acts">Привязанные акты</a>
+                <a class="nav-link" href="/unlinked-acts">Свободные акты</a>
+                <a class="nav-link" href="/import">Импорт и Настройки</a>
+                <a class="nav-link" href="/employees">Сотрудники</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="filter-zone">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Контрагент</label>
+                    <input type="text" class="form-control" id="filterName" placeholder="Поиск по названию..." oninput="applyFilters()">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">ИНН</label>
+                    <input type="text" class="form-control" id="filterInn" placeholder="Поиск по ИНН..." oninput="applyFilters()">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button class="btn btn-secondary w-100" onclick="clearFilters()">Сбросить</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-wrapper">
+            <div class="data-header" style="--cols: minmax(200px, 3fr) minmax(120px, 1fr) minmax(80px, 0.7fr) minmax(120px, 1fr) minmax(120px, 1fr);">
+                <div class="data-cell sortable sort-asc" data-sort="name" onclick="sortBy('name')">Контрагент</div>
+                <div class="data-cell sortable" data-sort="inn" onclick="sortBy('inn')">ИНН</div>
+                <div class="data-cell sortable" data-sort="invoices_count" onclick="sortBy('invoices_count')">Счета</div>
+                <div class="data-cell sortable" data-sort="linked_acts_count" onclick="sortBy('linked_acts_count')">Привязанные акты</div>
+                <div class="data-cell sortable" data-sort="free_acts_count" onclick="sortBy('free_acts_count')">Свободные акты</div>
+            </div>
+            <div class="data-table" id="contractorsTable" style="--cols: minmax(200px, 3fr) minmax(120px, 1fr) minmax(80px, 0.7fr) minmax(120px, 1fr) minmax(120px, 1fr);">
+                <div id="contractorsBody"></div>
+            </div>
+        </div>
+        <div class="pagination-bar" id="paginationBar"></div>
+    </div>
+
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let allContractors = [];
+        let filteredContractors = [];
+        let currentSort = { field: 'name', direction: 'asc' };
+        let currentPage = 1;
+        let pageSize = 24;
+
+        function formatContractorName(name) {
+            if (!name) return '';
+            const forms = ['ООО', 'ОАО', 'ЗАО', 'ПАО', 'АО', 'ИП', 'НКО', 'ТСЖ', 'ГК'];
+            let result = name;
+            for (const form of forms) {
+                const regex = new RegExp('\\b' + form + '\\b', 'gi');
+                result = result.replace(regex, '').trim();
+                if (result !== name.replace(regex, '').trim() || name.toUpperCase().includes(form)) {
+                    result = result + ' ' + form;
+                    break;
+                }
+                result = name;
+            }
+            return name;
+        }
+
+        function loadContractors() {
+            fetch('/contractors/list-full')
+                .then(r => r.json())
+                .then(data => {
+                    allContractors = data;
+                    applyFilters();
+                });
+        }
+
+        function applyFilters() {
+            const nameFilter = document.getElementById('filterName').value.toLowerCase();
+            const innFilter = document.getElementById('filterInn').value.toLowerCase();
+
+            filteredContractors = allContractors.filter(c => {
+                if (nameFilter && !(c.name || '').toLowerCase().includes(nameFilter)) return false;
+                if (innFilter && !(c.inn || '').toLowerCase().includes(innFilter)) return false;
+                return true;
+            });
+
+            sortData();
+            currentPage = 1;
+            renderCurrentPage();
+        }
+
+        function clearFilters() {
+            document.getElementById('filterName').value = '';
+            document.getElementById('filterInn').value = '';
+            applyFilters();
+        }
+
+        function sortBy(field) {
+            if (currentSort.field === field) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.field = field;
+                currentSort.direction = 'asc';
+            }
+
+            document.querySelectorAll('.data-header .data-cell.sortable').forEach(cell => {
+                cell.classList.remove('sort-asc', 'sort-desc');
+                if (cell.dataset.sort === currentSort.field) {
+                    cell.classList.add(currentSort.direction === 'asc' ? 'sort-asc' : 'sort-desc');
+                }
+            });
+
+            sortData();
+            renderCurrentPage();
+        }
+
+        function sortData() {
+            const field = currentSort.field;
+            const dir = currentSort.direction === 'asc' ? 1 : -1;
+
+            filteredContractors.sort((a, b) => {
+                let valA = a[field];
+                let valB = b[field];
+                if (typeof valA === 'string') valA = (valA || '').toLowerCase();
+                if (typeof valB === 'string') valB = (valB || '').toLowerCase();
+                if (valA < valB) return -1 * dir;
+                if (valA > valB) return 1 * dir;
+                return 0;
+            });
+        }
+
+        function renderCurrentPage() {
+            let paginated;
+            if (pageSize === 0) {
+                paginated = filteredContractors;
+            } else {
+                const start = (currentPage - 1) * pageSize;
+                paginated = filteredContractors.slice(start, start + pageSize);
+            }
+            renderContractors(paginated);
+            renderPagination();
+        }
+
+        function renderContractors(contractors) {
+            const body = document.getElementById('contractorsBody');
+            body.innerHTML = '';
+
+            contractors.forEach(c => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'data-row-wrapper';
+
+                const row = document.createElement('div');
+                row.className = 'data-row';
+                row.innerHTML = `
+                    <div class="data-cell" title="${c.name || ''}">${c.name || ''} <a href="/contractor/${c.id}" target="_blank" title="Открыть карточку контрагента" style="text-decoration:none; color:#667eea;">&#8599;</a></div>
+                    <div class="data-cell">${c.inn || ''}</div>
+                    <div class="data-cell">${c.invoices_count}</div>
+                    <div class="data-cell">${c.linked_acts_count}</div>
+                    <div class="data-cell">${c.free_acts_count}</div>
+                `;
+                wrapper.appendChild(row);
+                body.appendChild(wrapper);
+            });
+        }
+
+        function renderPagination() {
+            const bar = document.getElementById('paginationBar');
+            if (filteredContractors.length === 0) { bar.innerHTML = ''; return; }
+
+            const totalPages = pageSize === 0 ? 1 : Math.ceil(filteredContractors.length / pageSize);
+            let html = '';
+
+            html += `<a onclick="setPageSize(12)" class="${pageSize === 12 ? 'active' : ''}">12</a>`;
+            html += `<a onclick="setPageSize(24)" class="${pageSize === 24 ? 'active' : ''}">24</a>`;
+            html += `<input type="number" class="page-size-input form-control form-control-sm" id="customPageSize" min="1" value="${pageSize || ''}" placeholder="№" onkeydown="if(event.key==='Enter'){event.preventDefault();applyCustomPageSize();}">`;
+            html += `<a onclick="applyCustomPageSize()">Применить</a>`;
+            html += `<a onclick="showAll()">Все</a>`;
+
+            html += `<span style="margin-left:8px;"></span>`;
+
+            html += `<a onclick="goToPage(${currentPage - 1})" class="${currentPage <= 1 ? 'disabled' : ''}">Назад</a>`;
+
+            if (pageSize > 0) {
+                const maxVisible = 5;
+                let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+                let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+                if (endPage - startPage < maxVisible - 1) {
+                    startPage = Math.max(1, endPage - maxVisible + 1);
+                }
+
+                if (startPage > 1) {
+                    html += `<a onclick="goToPage(1)">1</a>`;
+                    if (startPage > 2) html += `<span style="padding:4px">...</span>`;
+                }
+
+                for (let i = startPage; i <= endPage; i++) {
+                    html += `<a onclick="goToPage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</a>`;
+                }
+
+                if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) html += `<span style="padding:4px">...</span>`;
+                    html += `<a onclick="goToPage(${totalPages})">Конец</a>`;
+                }
+            }
+
+            html += `<a onclick="goToPage(${currentPage + 1})" class="${currentPage >= totalPages ? 'disabled' : ''}">Вперед</a>`;
+
+            html += `<span style="margin-left:8px;color:#888;font-size:0.85rem;">Всего: ${filteredContractors.length}</span>`;
+
+            bar.innerHTML = html;
+        }
+
+        function setPageSize(size) {
+            pageSize = size;
+            currentPage = 1;
+            renderCurrentPage();
+        }
+
+        function applyCustomPageSize() {
+            const input = document.getElementById('customPageSize');
+            const val = parseInt(input.value);
+            if (val > 0) {
+                pageSize = val;
+                currentPage = 1;
+                renderCurrentPage();
+            }
+        }
+
+        function showAll() {
+            pageSize = 0;
+            currentPage = 1;
+            renderCurrentPage();
+        }
+
+        function goToPage(page) {
+            const totalPages = pageSize === 0 ? 1 : Math.ceil(filteredContractors.length / pageSize);
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            renderCurrentPage();
+        }
+
+        loadContractors();
+    </script>
+</body>
+</html>

@@ -1493,11 +1493,45 @@ def contractor_page(request: Request, contractor_id: int):
         session.close()
 
 
+@app.get("/contractors-list", response_class=HTMLResponse)
+def contractors_list_page(request: Request):
+    return templates.TemplateResponse("contractors_list.html", {"request": request})
+
+
 @app.get("/contractors/list")
 def list_contractors():
     session = get_session()
     try:
         contractors = session.query(Contractor).all()
         return [{"id": c.id, "name": c.name, "inn": c.inn} for c in contractors]
+    finally:
+        session.close()
+
+
+@app.get("/contractors/list-full")
+def list_contractors_full():
+    session = get_session()
+    try:
+        contractors = (
+            session.query(Contractor)
+            .options(joinedload(Contractor.invoices), joinedload(Contractor.acts))
+            .all()
+        )
+        result = []
+        for c in contractors:
+            invoices_count = len(c.invoices)
+            linked_acts = [a for a in c.acts if a.invoice_id is not None]
+            free_acts = [a for a in c.acts if a.invoice_id is None]
+            result.append(
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "inn": c.inn or "",
+                    "invoices_count": invoices_count,
+                    "linked_acts_count": len(linked_acts),
+                    "free_acts_count": len(free_acts),
+                }
+            )
+        return result
     finally:
         session.close()
