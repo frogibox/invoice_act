@@ -83,10 +83,11 @@
         function checkInn() {
             const inn = innInput.value.trim();
             
+            nameInput.value = '';
+            innMessage.style.display = 'none';
+            existingContractor = null;
+            
             if (inn.length < 2) {
-                innMessage.style.display = 'none';
-                nameInput.value = '';
-                existingContractor = null;
                 return;
             }
             
@@ -98,9 +99,6 @@
                         nameInput.value = data.contractor.name;
                         innMessage.innerHTML = `<div class="alert alert-info mb-0">Контрагент с таким ИНН уже существует: <strong>${data.contractor.name}</strong></div>`;
                         innMessage.style.display = 'block';
-                    } else {
-                        existingContractor = null;
-                        innMessage.style.display = 'none';
                     }
                 })
                 .catch(err => {
