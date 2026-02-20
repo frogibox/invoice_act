@@ -203,15 +203,8 @@
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    resultMessage.innerHTML = `<div class="alert alert-success">Акт успешно добавлен. <a href="${invoiceId ? '/linked-acts' : '/unlinked-acts'}">Вернуться к списку</a></div>`;
+                    resultMessage.innerHTML = `<div class="alert alert-success">Акт успешно добавлен. <a href="${invoiceId ? '/linked-acts' : '/unlinked-acts'}">Вернуться к списку</a> или <a href="/act/add">Добавить ещё один акт</a></div>`;
                     resultMessage.style.display = 'block';
-                    document.getElementById('numberInput').disabled = true;
-                    contractorInput.disabled = true;
-                    innInput.disabled = true;
-                    document.getElementById('signingDateInput').disabled = true;
-                    document.getElementById('amountInput').disabled = true;
-                    document.getElementById('responsibleInput').disabled = true;
-                    document.getElementById('invoiceInput').disabled = true;
                 } else {
                     resultMessage.innerHTML = `<div class="alert alert-danger">Ошибка: ${data.error || 'Не удалось добавить акт'}</div>`;
                     resultMessage.style.display = 'block';
