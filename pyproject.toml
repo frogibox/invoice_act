@@ -37,3 +37,6 @@ dev = [
 markers = [
     "e2e: end-to-end tests requiring running server",
 ]
+log_file = "tests/logs/pytest.log"
+log_file_level = "INFO"
+log_cli = false

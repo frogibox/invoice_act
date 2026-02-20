@@ -66,4 +66,5 @@ ignore_me/
 
 # Test results
 tests_result/
+tests/logs/
 .coverage

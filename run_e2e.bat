@@ -7,7 +7,8 @@ echo Creating tests_result directory...
 if not exist "tests_result\e2e" mkdir tests_result\e2e
 
 echo Starting backend on port 10000...
-start /B uv run uvicorn src.main:app --host 127.0.0.1 --port 10000 > server.log 2>&1
+if not exist "tests\logs" mkdir tests\logs
+start /B uv run uvicorn src.main:app --host 127.0.0.1 --port 10000 > tests\logs\server.log 2>&1
 echo Waiting for server to start...
 
 :wait_server
