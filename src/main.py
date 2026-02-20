@@ -829,9 +829,28 @@ async def import_sbis_force_inn(file: UploadFile = File(...)):
                 if is_duplicate:
                     if row_info["import_status"] == "Импортирован":
                         row_info["import_status"] = "Пропущен"
-                    row_info["reasons"].append(
-                        "Дубликат (акт с такими реквизитами уже существует)"
+
+                    normalized_name = normalize_contractor_name(contractor_name)
+                    contractor = (
+                        session.query(Contractor)
+                        .filter(Contractor.name == normalized_name)
+                        .first()
                     )
+
+                    inn_updated = False
+                    if contractor and inn and inn.strip():
+                        if contractor.inn != inn.strip():
+                            contractor.inn = inn.strip()
+                            inn_updated = True
+
+                    if inn_updated:
+                        row_info["reasons"].append(
+                            "Дубликат (акт существует), ИНН контрагента обновлён"
+                        )
+                    else:
+                        row_info["reasons"].append(
+                            "Дубликат (акт с такими реквизитами уже существует)"
+                        )
                     skipped_duplicate += 1
 
                 if row_info["import_status"] == "Импортирован":
