@@ -151,8 +151,11 @@
                     <label class="form-label">ИНН</label>
                     <input type="text" class="form-control" id="filterInn" placeholder="Поиск по ИНН..." oninput="applyFilters()">
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
+                <div class="col-md-1 d-flex align-items-end">
                     <button class="btn btn-secondary w-100" onclick="clearFilters()">Сбросить</button>
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button class="btn btn-danger w-100" id="bulkDeleteBtn" onclick="confirmBulkDelete()" disabled>Удалить</button>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
                     <a href="/contractor/add" class="btn btn-primary w-100">Добавить контрагента</a>
@@ -161,15 +164,16 @@
         </div>
         
         <div class="table-wrapper">
-            <div class="data-header" style="--cols: minmax(200px, 3fr) minmax(120px, 1fr) minmax(80px, 0.7fr) minmax(120px, 1fr) minmax(120px, 1fr) minmax(100px, 0.8fr);">
+            <div class="data-header" style="--cols: minmax(200px, 3fr) minmax(120px, 1fr) minmax(80px, 0.7fr) minmax(120px, 1fr) minmax(120px, 1fr) minmax(100px, 0.8fr) 30px;">
                 <div class="data-cell sortable sort-asc" data-sort="name" onclick="sortBy('name')">Контрагент</div>
                 <div class="data-cell sortable" data-sort="inn" onclick="sortBy('inn')">ИНН</div>
                 <div class="data-cell sortable" data-sort="invoices_count" onclick="sortBy('invoices_count')">Счета</div>
                 <div class="data-cell sortable" data-sort="linked_acts_count" onclick="sortBy('linked_acts_count')">Привязанные акты</div>
                 <div class="data-cell sortable" data-sort="free_acts_count" onclick="sortBy('free_acts_count')">Свободные акты</div>
                 <div class="data-cell">Действия</div>
+                <div class="data-cell"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></div>
             </div>
-            <div class="data-table" id="contractorsTable" style="--cols: minmax(200px, 3fr) minmax(120px, 1fr) minmax(80px, 0.7fr) minmax(120px, 1fr) minmax(120px, 1fr) minmax(100px, 0.8fr);">
+            <div class="data-table" id="contractorsTable" style="--cols: minmax(200px, 3fr) minmax(120px, 1fr) minmax(80px, 0.7fr) minmax(120px, 1fr) minmax(120px, 1fr) minmax(100px, 0.8fr) 30px;">
                 <div id="contractorsBody"></div>
             </div>
         </div>
@@ -200,6 +204,24 @@
         </div>
     </div>
 
+    <div class="modal fade" id="bulkDeleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Подтверждение массового удаления</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="bulkDeleteMessage"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-danger" id="confirmBulkDeleteBtn">Удалить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/js/bootstrap.bundle.min.js"></script>
     <script>
         let allContractors = [];
@@ -207,6 +229,7 @@
         let currentSort = { field: 'name', direction: 'asc' };
         let currentPage = 1;
         let pageSize = 24;
+        let selectedContractors = new Set();
 
         function formatContractorName(name) {
             if (!name) return '';
@@ -299,6 +322,8 @@
         function renderContractors(contractors) {
             const body = document.getElementById('contractorsBody');
             body.innerHTML = '';
+            selectedContractors.clear();
+            updateBulkDeleteBtn();
 
             contractors.forEach(c => {
                 const wrapper = document.createElement('div');
@@ -313,6 +338,7 @@
                     <div class="data-cell">${c.linked_acts_count}</div>
                     <div class="data-cell">${c.free_acts_count}</div>
                     <div class="data-cell"><button class="btn btn-sm btn-danger" onclick="confirmDeleteContractor(${c.id}, ${c.invoices_count}, ${c.linked_acts_count}, ${c.free_acts_count})">Удалить</button></div>
+                    <div class="data-cell"><input type="checkbox" class="contractor-checkbox" data-contractor-id="${c.id}" onchange="toggleContractorCheckbox(${c.id})"></div>
                 `;
                 wrapper.appendChild(row);
                 body.appendChild(wrapper);
@@ -504,6 +530,77 @@
             
             pendingDeleteId = null;
             deleteModal.hide();
+        }
+
+        function toggleSelectAll() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.contractor-checkbox');
+            
+            if (selectAllCheckbox.checked) {
+                checkboxes.forEach(cb => {
+                    cb.checked = true;
+                    selectedContractors.add(parseInt(cb.dataset.contractorId));
+                });
+            } else {
+                checkboxes.forEach(cb => {
+                    cb.checked = false;
+                });
+                selectedContractors.clear();
+            }
+            updateBulkDeleteBtn();
+        }
+        
+        function toggleContractorCheckbox(contractorId) {
+            if (selectedContractors.has(contractorId)) {
+                selectedContractors.delete(contractorId);
+            } else {
+                selectedContractors.add(contractorId);
+            }
+            updateBulkDeleteBtn();
+            updateSelectAllCheckbox();
+        }
+        
+        function updateBulkDeleteBtn() {
+            const btn = document.getElementById('bulkDeleteBtn');
+            btn.disabled = selectedContractors.size === 0;
+        }
+        
+        function updateSelectAllCheckbox() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.contractor-checkbox');
+            selectAllCheckbox.checked = checkboxes.length > 0 && selectedContractors.size === checkboxes.length;
+        }
+        
+        function confirmBulkDelete() {
+            if (selectedContractors.size === 0) return;
+            
+            document.getElementById('bulkDeleteMessage').textContent = 
+                'Вы уверены, что хотите удалить ' + selectedContractors.size + ' контрагент(а/ов)? Связанные счета и акты будут отвязаны.';
+            const modal = new bootstrap.Modal(document.getElementById('bulkDeleteModal'));
+            modal.show();
+        }
+        
+        document.getElementById('confirmBulkDeleteBtn').onclick = function() {
+            bulkDeleteContractors();
+            bootstrap.Modal.getInstance(document.getElementById('bulkDeleteModal')).hide();
+        };
+        
+        function bulkDeleteContractors() {
+            const ids = Array.from(selectedContractors);
+            fetch('/contractors/bulk-delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: ids })
+            })
+            .then(r => r.json())
+            .then(result => {
+                if (result.success) {
+                    selectedContractors.clear();
+                    loadContractors();
+                } else {
+                    alert('Ошибка удаления: ' + (result.error || 'Unknown error'));
+                }
+            });
         }
 
         loadContractors();

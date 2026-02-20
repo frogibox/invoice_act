@@ -141,9 +141,12 @@
                     </div>
                 </div>
                 <div class="col-md-8">
-                    <h6>Список сотрудников</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">Список сотрудников</h6>
+                        <button class="btn btn-danger btn-sm" id="bulkDeleteBtn" onclick="confirmBulkDelete()" disabled>Удалить выбранных</button>
+                    </div>
                     <div>
-                        <div class="data-table" id="employeesTable" style="--cols: 40px minmax(100px, 1.5fr) minmax(80px, 1fr) minmax(100px, 1.5fr) minmax(100px, 1.5fr) minmax(100px, 1.5fr) minmax(160px, 1.5fr);">
+                        <div class="data-table" id="employeesTable" style="--cols: 40px minmax(100px, 1.5fr) minmax(80px, 1fr) minmax(100px, 1.5fr) minmax(100px, 1.5fr) minmax(100px, 1.5fr) minmax(160px, 1.5fr) 30px;">
                             <div class="data-header">
                                 <div class="data-cell">№</div>
                                 <div class="data-cell sortable" data-sort="last_name" onclick="sortEmployees('last_name')">Фамилия</div>
@@ -152,6 +155,7 @@
                                 <div class="data-cell sortable" data-sort="department" onclick="sortEmployees('department')">Отдел</div>
                                 <div class="data-cell sortable" data-sort="position" onclick="sortEmployees('position')">Должность</div>
                                 <div class="data-cell">Действия</div>
+                                <div class="data-cell"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></div>
                             </div>
                             <div id="employeesBody"></div>
                         </div>
@@ -198,10 +202,29 @@
         </div>
     </div>
 
+    <div class="modal fade" id="bulkDeleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Подтверждение массового удаления</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="bulkDeleteMessage"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-danger" id="confirmBulkDeleteBtn">Удалить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/js/bootstrap.bundle.min.js"></script>
     <script>
         let employees = [];
         let currentSort = { field: 'last_name', direction: 'asc' };
+        let selectedEmployees = new Set();
         
         function loadEmployees() {
             fetch('/employees/list')
@@ -225,6 +248,8 @@
         function renderEmployees() {
             const body = document.getElementById('employeesBody');
             body.innerHTML = '';
+            selectedEmployees.clear();
+            updateBulkDeleteBtn();
             
             document.querySelectorAll('.data-header .data-cell.sortable').forEach(cell => {
                 cell.classList.remove('sort-asc', 'sort-desc');
@@ -259,6 +284,7 @@
                             <button class="btn btn-sm btn-danger" onclick="deleteEmployee(${emp.id})">Удалить</button>
                         </div>
                     </div>
+                    <div class="data-cell"><input type="checkbox" class="employee-checkbox" data-employee-id="${emp.id}" onchange="toggleEmployeeCheckbox(${emp.id})"></div>
                 `;
                 wrapper.appendChild(row);
                 body.appendChild(wrapper);
@@ -386,6 +412,77 @@
                 alert('Ошибка: ' + err);
             }
         };
+        
+        function toggleSelectAll() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.employee-checkbox');
+            
+            if (selectAllCheckbox.checked) {
+                checkboxes.forEach(cb => {
+                    cb.checked = true;
+                    selectedEmployees.add(parseInt(cb.dataset.employeeId));
+                });
+            } else {
+                checkboxes.forEach(cb => {
+                    cb.checked = false;
+                });
+                selectedEmployees.clear();
+            }
+            updateBulkDeleteBtn();
+        }
+        
+        function toggleEmployeeCheckbox(employeeId) {
+            if (selectedEmployees.has(employeeId)) {
+                selectedEmployees.delete(employeeId);
+            } else {
+                selectedEmployees.add(employeeId);
+            }
+            updateBulkDeleteBtn();
+            updateSelectAllCheckbox();
+        }
+        
+        function updateBulkDeleteBtn() {
+            const btn = document.getElementById('bulkDeleteBtn');
+            btn.disabled = selectedEmployees.size === 0;
+        }
+        
+        function updateSelectAllCheckbox() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.employee-checkbox');
+            selectAllCheckbox.checked = checkboxes.length > 0 && selectedEmployees.size === checkboxes.length;
+        }
+        
+        function confirmBulkDelete() {
+            if (selectedEmployees.size === 0) return;
+            
+            document.getElementById('bulkDeleteMessage').textContent = 
+                'Вы уверены, что хотите удалить ' + selectedEmployees.size + ' сотрудник(а/ов)?';
+            const modal = new bootstrap.Modal(document.getElementById('bulkDeleteModal'));
+            modal.show();
+        }
+        
+        document.getElementById('confirmBulkDeleteBtn').onclick = function() {
+            bulkDeleteEmployees();
+            bootstrap.Modal.getInstance(document.getElementById('bulkDeleteModal')).hide();
+        };
+        
+        function bulkDeleteEmployees() {
+            const ids = Array.from(selectedEmployees);
+            fetch('/employees/bulk-delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: ids })
+            })
+            .then(r => r.json())
+            .then(result => {
+                if (result.success) {
+                    selectedEmployees.clear();
+                    loadEmployees();
+                } else {
+                    alert('Ошибка удаления: ' + (result.error || 'Unknown error'));
+                }
+            });
+        }
         
         loadEmployees();
     </script>

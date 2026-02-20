@@ -1150,6 +1150,32 @@ def delete_employee(employee_id: int):
         session.close()
 
 
+@app.post("/employees/bulk-delete")
+def bulk_delete_employees(data: Dict[str, Any] = Body(...)):
+    session = get_session()
+    try:
+        ids = data.get("ids", [])
+        if not ids:
+            return {"error": "Не указаны ID сотрудников", "success": False}
+
+        deleted = 0
+        for employee_id in ids:
+            employee = (
+                session.query(Employee).filter(Employee.id == employee_id).first()
+            )
+            if employee:
+                session.delete(employee)
+                deleted += 1
+
+        session.commit()
+        return {"success": True, "deleted": deleted}
+    except Exception as e:
+        session.rollback()
+        return {"error": str(e), "success": False}
+    finally:
+        session.close()
+
+
 @app.post("/employees/update/{employee_id}")
 def update_employee(
     employee_id: int,
@@ -2076,6 +2102,36 @@ def delete_contractor(contractor_id: int, action: Optional[str] = Form(None)):
 
         session.commit()
         return {"success": True}
+    except Exception as e:
+        session.rollback()
+        return {"error": str(e), "success": False}
+    finally:
+        session.close()
+
+
+@app.post("/contractors/bulk-delete")
+def bulk_delete_contractors(data: Dict[str, Any] = Body(...)):
+    session = get_session()
+    try:
+        ids = data.get("ids", [])
+        if not ids:
+            return {"error": "Не указаны ID контрагентов", "success": False}
+
+        deleted = 0
+        for contractor_id in ids:
+            contractor = (
+                session.query(Contractor).filter(Contractor.id == contractor_id).first()
+            )
+            if contractor:
+                for act in contractor.acts:
+                    act.contractor_id = None
+                for invoice in contractor.invoices:
+                    invoice.contractor_id = None
+                session.delete(contractor)
+                deleted += 1
+
+        session.commit()
+        return {"success": True, "deleted": deleted}
     except Exception as e:
         session.rollback()
         return {"error": str(e), "success": False}
