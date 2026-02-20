@@ -1453,6 +1453,66 @@ def get_acts_by_invoice(invoice_id: int):
         session.close()
 
 
+@app.get("/contractor/add", response_class=HTMLResponse)
+def add_contractor_page(request: Request):
+    return templates.TemplateResponse("contractor_add.html", {"request": request})
+
+
+@app.get("/contractor/by-inn/{inn}")
+def get_contractor_by_inn(inn: str):
+    session = get_session()
+    try:
+        contractor = session.query(Contractor).filter(Contractor.inn == inn).first()
+        if contractor:
+            return {
+                "found": True,
+                "contractor": {
+                    "id": contractor.id,
+                    "name": contractor.name,
+                    "inn": contractor.inn,
+                },
+            }
+        return {"found": False}
+    finally:
+        session.close()
+
+
+@app.post("/contractor/add")
+def add_contractor(name: str = Form(...), inn: Optional[str] = Form(None)):
+    session = get_session()
+    try:
+        normalized_name = normalize_contractor_name(name)
+        existing = (
+            session.query(Contractor).filter(Contractor.name == normalized_name).first()
+        )
+        if existing:
+            return {
+                "success": False,
+                "error": "Контрагент с таким наименованием уже существует",
+            }
+
+        inn_value = inn.strip() if inn and inn.strip() else None
+        if inn_value:
+            existing_by_inn = (
+                session.query(Contractor).filter(Contractor.inn == inn_value).first()
+            )
+            if existing_by_inn:
+                return {
+                    "success": False,
+                    "error": "Контрагент с таким ИНН уже существует",
+                }
+
+        contractor = Contractor(name=normalized_name, inn=inn_value)
+        session.add(contractor)
+        session.commit()
+        return {"success": True, "id": contractor.id}
+    except Exception as e:
+        session.rollback()
+        return {"success": False, "error": str(e)}
+    finally:
+        session.close()
+
+
 @app.post("/contractor/update-inn/{contractor_id}")
 def update_contractor_inn(contractor_id: int, inn: Optional[str] = Form(None)):
     session = get_session()

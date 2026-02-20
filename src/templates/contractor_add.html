@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Добавление контрагента - Учет счетов и актов</title>
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .form-control, .form-select {
+            border-color: #adb5bd; box-shadow: inset 0 1px 3px rgba(0,0,0,0.12);
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea; box-shadow: inset 0 1px 3px rgba(0,0,0,0.12), 0 0 0 0.2rem rgba(102,126,234,0.25);
+        }
+        .container { max-width: 600px; }
+        .settings-card { background: #fff; border-radius: 8px; padding: 20px; margin-top: 20px; }
+        .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; padding-top: 0.3rem; padding-bottom: 0.3rem; }
+        .navbar-brand { padding-top: 0.2rem; padding-bottom: 0.2rem; font-size: 1rem; }
+        .nav-link { padding: 0.3rem 0.5rem !important; font-size: 0.9rem; }
+        .nav-link.active { 
+            font-weight: bold; 
+            text-decoration: underline;
+            background-color: rgba(255,255,255,0.15);
+            border-radius: 4px;
+        }
+        .alert-info {
+            background-color: #e7f3ff;
+            border-color: #b8daff;
+            color: #004085;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark mb-3">
+        <div class="container">
+            <a class="navbar-brand" href="/">Учет счетов и актов</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link active" href="/contractors-list">Контрагенты</a>
+                <a class="nav-link" href="/">Счета</a>
+                <a class="nav-link" href="/linked-acts">Привязанные акты</a>
+                <a class="nav-link" href="/unlinked-acts">Свободные акты</a>
+                <a class="nav-link" href="/import">Импорт и Настройки</a>
+                <a class="nav-link" href="/employees">Сотрудники</a>
+                <a class="nav-link" href="/settings">Настройки</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h4 class="mb-3">Добавление контрагента</h4>
+        
+        <div class="settings-card">
+            <div class="mb-3">
+                <label class="form-label">ИНН</label>
+                <input type="text" class="form-control" id="innInput" placeholder="Введите ИНН" oninput="checkInn()">
+                <div id="innMessage" class="mt-2" style="display: none;"></div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Наименование контрагента</label>
+                <input type="text" class="form-control" id="nameInput" placeholder="Введите наименование">
+            </div>
+            
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary" onclick="addContractor()">Добавить</button>
+                <a href="/contractors-list" class="btn btn-secondary">Отмена</a>
+            </div>
+            
+            <div id="resultMessage" class="mt-3" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const innInput = document.getElementById('innInput');
+        const nameInput = document.getElementById('nameInput');
+        const innMessage = document.getElementById('innMessage');
+        const resultMessage = document.getElementById('resultMessage');
+        
+        let existingContractor = null;
+        
+        function checkInn() {
+            const inn = innInput.value.trim();
+            
+            if (inn.length < 2) {
+                innMessage.style.display = 'none';
+                nameInput.value = '';
+                existingContractor = null;
+                return;
+            }
+            
+            fetch(`/contractor/by-inn/${encodeURIComponent(inn)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.found) {
+                        existingContractor = data.contractor;
+                        nameInput.value = data.contractor.name;
+                        innMessage.innerHTML = `<div class="alert alert-info mb-0">Контрагент с таким ИНН уже существует: <strong>${data.contractor.name}</strong></div>`;
+                        innMessage.style.display = 'block';
+                    } else {
+                        existingContractor = null;
+                        innMessage.style.display = 'none';
+                    }
+                })
+                .catch(err => {
+                    console.error('Error checking INN:', err);
+                });
+        }
+        
+        function addContractor() {
+            const inn = innInput.value.trim();
+            const name = nameInput.value.trim();
+            
+            if (!name) {
+                resultMessage.innerHTML = '<div class="alert alert-danger">Введите наименование контрагента</div>';
+                resultMessage.style.display = 'block';
+                return;
+            }
+            
+            if (existingContractor) {
+                resultMessage.innerHTML = `<div class="alert alert-warning">Контрагент с таким ИНН уже существует. <a href="/contractor/${existingContractor.id}">Открыть карточку</a></div>`;
+                resultMessage.style.display = 'block';
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('inn', inn);
+            
+            fetch('/contractor/add', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    resultMessage.innerHTML = `<div class="alert alert-success">Контрагент успешно добавлен. <a href="/contractors-list">Вернуться к списку</a></div>`;
+                    resultMessage.style.display = 'block';
+                    innInput.disabled = true;
+                    nameInput.disabled = true;
+                } else {
+                    resultMessage.innerHTML = `<div class="alert alert-danger">Ошибка: ${data.error || 'Не удалось добавить контрагента'}</div>`;
+                    resultMessage.style.display = 'block';
+                }
+            })
+            .catch(err => {
+                resultMessage.innerHTML = '<div class="alert alert-danger">Ошибка при добавлении контрагента</div>';
+                resultMessage.style.display = 'block';
+            });
+        }
+    </script>
+</body>
+</html>
