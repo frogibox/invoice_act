@@ -176,17 +176,13 @@
         function formatContractorName(name) {
             if (!name) return '';
             const forms = ['ООО', 'ОАО', 'ЗАО', 'ПАО', 'АО', 'ИП', 'НКО', 'ТСЖ', 'ГК'];
-            let result = name;
-            for (const form of forms) {
-                const regex = new RegExp('\\b' + form + '\\b', 'gi');
-                result = result.replace(regex, '').trim();
-                if (result !== name.replace(regex, '').trim() || name.toUpperCase().includes(form)) {
-                    result = result + ' ' + form;
-                    break;
+            const parts = name.trim().split(/\s+/);
+            return parts.map(part => {
+                if (forms.includes(part.toUpperCase())) {
+                    return part.toUpperCase();
                 }
-                result = name;
-            }
-            return name;
+                return part.charAt(0).toUpperCase() + part.slice(1);
+            }).join(' ');
         }
 
         function loadContractors() {
@@ -276,7 +272,7 @@
                 const row = document.createElement('div');
                 row.className = 'data-row';
                 row.innerHTML = `
-                    <div class="data-cell" title="${c.name || ''}">${c.name || ''} <a href="/contractor/${c.id}" target="_blank" title="Открыть карточку контрагента" style="text-decoration:none; color:#667eea;">&#8599;</a></div>
+                    <div class="data-cell" title="${formatContractorName(c.name) || ''}">${formatContractorName(c.name) || ''} <a href="/contractor/${c.id}" target="_blank" title="Открыть карточку контрагента" style="text-decoration:none; color:#667eea;">&#8599;</a></div>
                     <div class="data-cell"><input type="text" class="inn-input" value="${c.inn || ''}" data-id="${c.id}" onchange="updateInn(this, ${c.id})" placeholder="ИНН"></div>
                     <div class="data-cell">${c.invoices_count}</div>
                     <div class="data-cell">${c.linked_acts_count}</div>
