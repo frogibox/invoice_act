@@ -435,23 +435,104 @@ def create_item():
 
 ## Руководство по тестированию
 
-При добавлении тестов:
+### Архитектура тестов
+
+**Структура:**
+- `tests/unit/` — модульные тесты (функции, утилиты)
+- `tests/integration/` — интеграционные тесты (API эндпоинты)
+- `tests/conftest.py` — фикстуры и настройка тестового окружения
+
+**Изоляция базы данных:**
+- Тесты используют in-memory SQLite (`:memory:`)
+- Реальная база данных (`database.db`) НЕ затрагивается
+- Фикстура `test_session` создаёт изолированную сессию для каждого теста
+- После каждого теста база очищается автоматически
+
+### Принципы написания тестов
+
+#### 1. Тестирование чёрного ящика
+
+Тесты должны проверять **поведение**, а не реализацию:
+- Тестируй входы и выходы, а не внутреннее состояние
+- Не проверяй приватные методы напрямую
+- Используй публичный API (HTTP эндпоинты, публичные функции)
 
 ```python
-# tests/test_database.py
-import pytest
-from src.database import get_session, Contractor
+# Хорошо — чёрный ящик (проверяем результат через API)
+def test_add_employee_success(client):
+    response = client.post("/employees/add", data={"last_name": "Test"})
+    assert response.status_code == 200
+    assert response.json()["success"] is True
 
-def test_contractor_creation():
-    session = get_session()
-    try:
-        contractor = Contractor(name="Test Company")
-        session.add(contractor)
-        session.commit()
-        assert contractor.id is not None
-    finally:
-        session.rollback()
-        session.close()
+# Плохо — белый ящик (проверяем внутреннее состояние)
+def test_add_employee_database_state(client, test_session):
+    client.post("/employees/add", data={"last_name": "Test"})
+    employee = test_session.query(Employee).first()  # Прямой доступ к БД
+    assert employee.last_name == "Test"
+```
+
+#### 2. Стабы вместо моков
+
+**Стаб (Stub)** — предоставляет заглушку для зависимости с предопределённым поведением.
+**Мок (Mock)** — проверяет, как вызывается зависимость.
+
+Правила:
+- **Используй стабы** для изоляции внешних зависимостей (БД, API)
+- **Избегай моков** для проверки внутренних вызовов
+- Моки допустимы только когда без них **никак не обойтись**
+
+```python
+# Стаб — хорошо (просто заменяем реализацию)
+@pytest.fixture
+def client(test_session):
+    with patch("src.main.get_session", return_value=test_session):
+        yield TestClient(app)
+
+# Мок — только если нужно проверить вызов
+def test_email_sent(mocker):
+    send_email = mocker.patch("src.utils.send_email")
+    process_order()
+    send_email.assert_called_once()  # Только когда критично проверить факт вызова
+```
+
+#### 3. Независимость тестов
+
+- Каждый тест должен быть независим от других
+- Не полагаться на порядок выполнения тестов
+- Очищать данные после теста (или использовать изолированную фикстуру)
+
+#### 4. Читаемость тестов
+
+```python
+# Хорошо — понятное название и структура
+def test_add_employee_duplicate_returns_error(client):
+    # Arrange
+    client.post("/employees/add", data={"last_name": "Petrov", "first_name": "Petr"})
+    
+    # Act
+    response = client.post("/employees/add", data={"last_name": "Petrov", "first_name": "Petr"})
+    
+    # Assert
+    assert response.json()["success"] is False
+    assert "уже существует" in response.json()["error"]
+```
+
+### Примеры тестов
+
+```python
+# tests/unit/test_utils.py — модульный тест (функция)
+def test_normalize_contractor_name():
+    assert normalize_contractor_name('ООО "Тест"') == "тест ооо"
+
+# tests/integration/test_api.py — интеграционный тест (API)
+class TestEmployeesAPI:
+    def test_add_employee_success(self, client):
+        response = client.post(
+            "/employees/add",
+            data={"last_name": "Ivanov", "first_name": "Ivan"},
+        )
+        assert response.status_code == 200
+        assert response.json().get("success") is True
 ```
 
 Использовать фикстуры в `conftest.py` для общей настройки.
