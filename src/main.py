@@ -555,11 +555,19 @@ async def import_sbis(file: UploadFile = File(...)):
             if h:
                 col_map[h.strip()] = i + 1
 
-        inn_col_name = None
-        for name in ["ИНН/КПП", "ИНН / КПП", "ИНН", "Инн/Кпп"]:
-            if name in col_map:
-                inn_col_name = name
-                break
+        contractor_idx = col_map.get("Контрагент")
+        org_idx = col_map.get("Организация")
+
+        inn_col_idx = None
+        if contractor_idx and org_idx:
+            for i, h in enumerate(headers):
+                if h:
+                    h_stripped = h.strip()
+                    if h_stripped in ["ИНН/КПП", "ИНН / КПП", "ИНН"]:
+                        col_idx = i + 1
+                        if contractor_idx < col_idx < org_idx:
+                            inn_col_idx = col_idx
+                            break
 
         added = 0
         skipped_status = 0
@@ -581,8 +589,8 @@ async def import_sbis(file: UploadFile = File(...)):
                     row[col_map["Контрагент"] - 1].value or ""
                 ).strip()
                 inn_kpp = ""
-                if inn_col_name:
-                    inn_kpp = str(row[col_map[inn_col_name] - 1].value or "").strip()
+                if inn_col_idx:
+                    inn_kpp = str(row[inn_col_idx - 1].value or "").strip()
                 inn = inn_kpp.split("/")[0] if inn_kpp else ""
                 filename = str(row[col_map["Имя файла"] - 1].value or "").strip()
 
