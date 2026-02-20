@@ -68,6 +68,22 @@
             text-overflow: ellipsis;
             word-break: break-word;
         }
+        .inn-input {
+            width: 100%;
+            padding: 2px 4px;
+            font-size: 0.875rem;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background: #fff;
+        }
+        .inn-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102,126,234,0.25);
+        }
+        .inn-input.saving {
+            opacity: 0.6;
+        }
         .pagination-bar {
             display: flex;
             align-items: center;
@@ -261,7 +277,7 @@
                 row.className = 'data-row';
                 row.innerHTML = `
                     <div class="data-cell" title="${c.name || ''}">${c.name || ''} <a href="/contractor/${c.id}" target="_blank" title="Открыть карточку контрагента" style="text-decoration:none; color:#667eea;">&#8599;</a></div>
-                    <div class="data-cell">${c.inn || ''}</div>
+                    <div class="data-cell"><input type="text" class="inn-input" value="${c.inn || ''}" data-id="${c.id}" onchange="updateInn(this, ${c.id})" placeholder="ИНН"></div>
                     <div class="data-cell">${c.invoices_count}</div>
                     <div class="data-cell">${c.linked_acts_count}</div>
                     <div class="data-cell">${c.free_acts_count}</div>
@@ -345,6 +361,38 @@
             if (page < 1 || page > totalPages) return;
             currentPage = page;
             renderCurrentPage();
+        }
+
+        function updateInn(input, contractorId) {
+            const newInn = input.value.trim();
+            input.classList.add('saving');
+            
+            const formData = new FormData();
+            formData.append('inn', newInn);
+
+            fetch(`/contractor/update-inn/${contractorId}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const contractor = allContractors.find(c => c.id === contractorId);
+                    if (contractor) {
+                        contractor.inn = newInn || null;
+                    }
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Не удалось сохранить ИНН'));
+                    loadContractors();
+                }
+            })
+            .catch(err => {
+                alert('Ошибка сохранения ИНН');
+                loadContractors();
+            })
+            .finally(() => {
+                input.classList.remove('saving');
+            });
         }
 
         loadContractors();
