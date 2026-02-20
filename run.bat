@@ -1,5 +1,5 @@
 @echo off
-chcp 65001 >nul
+chcp 65001 >NUL
 cd /d "%~dp0"
 
 echo Запуск приложения...
