@@ -1295,7 +1295,7 @@ def calculate_deadline(invoice_id: int, days: int = Form(...)):
 
 @app.get("/invoices/list")
 def list_invoices_filtered(
-    contractor_id: Optional[int] = None,
+    contractor_id: Optional[str] = None,
     motivated_person: Optional[str] = None,
     payment_date_from: Optional[str] = None,
     payment_date_to: Optional[str] = None,
@@ -1308,8 +1308,8 @@ def list_invoices_filtered(
 
         if contractor_id == "none":
             query = query.filter(Invoice.contractor_id.is_(None))
-        elif contractor_id:
-            query = query.filter(Invoice.contractor_id == contractor_id)
+        elif contractor_id and contractor_id.isdigit():
+            query = query.filter(Invoice.contractor_id == int(contractor_id))
 
         if motivated_person:
             query = query.filter(Invoice.motivated_person == motivated_person)
