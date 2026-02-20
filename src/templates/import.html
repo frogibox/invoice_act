@@ -234,6 +234,17 @@
                                 </form>
                             </div>
                         </div>
+                        <div class="card mt-2">
+                            <div class="card-body">
+                                <h6 style="color: #dc3545;">Временный импорт СБИС (с перезаписью ИНН)</h6>
+                                <form id="importSbisForceInnForm" enctype="multipart/form-data">
+                                    <div class="mb-3">
+                                        <input type="file" class="form-control" name="file" accept=".xlsx" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-danger">Импортировать с перезаписью ИНН</button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -710,6 +721,43 @@
                 
                 if (result.success) {
                     log.innerHTML = `<strong>Импорт завершен!</strong><br>
+                        Добавлено: ${result.added}<br>
+                        Пропущено (неверный статус): ${result.skipped_status}<br>
+                        Пропущено (тип ЭДОСч): ${result.skipped_type}<br>
+                        Пропущено (пустые данные): ${result.skipped_empty}<br>
+                        Пропущено (дубликаты): ${result.skipped_duplicate}`;
+                    
+                    renderDetailTableSbis(result.rows_detail);
+                } else {
+                    log.className = 'import-summary error';
+                    log.innerHTML = '<strong>Ошибка:</strong> ' + (result.error || 'Unknown error');
+                }
+            } catch (err) {
+                log.className = 'import-summary error';
+                log.innerHTML = '<strong>Ошибка:</strong> ' + err;
+            }
+        };
+        
+        document.getElementById('importSbisForceInnForm').onsubmit = async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const log = document.getElementById('importLog');
+            log.style.display = 'block';
+            log.className = 'import-summary';
+            log.innerHTML = '<strong>Временный импорт из СБИС (с перезаписью ИНН)...</strong>';
+            
+            document.getElementById('detailResults1C').style.display = 'none';
+            document.getElementById('detailResultsSbis').style.display = 'none';
+            
+            try {
+                const response = await fetch('/import-sbis-force-inn', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    log.innerHTML = `<strong>Временный импорт завершен!</strong><br>
                         Добавлено: ${result.added}<br>
                         Пропущено (неверный статус): ${result.skipped_status}<br>
                         Пропущено (тип ЭДОСч): ${result.skipped_type}<br>

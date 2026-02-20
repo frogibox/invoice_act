@@ -210,7 +210,9 @@ def parse_amount(value) -> Optional[float]:
     return None
 
 
-def get_or_create_contractor(session, name: str, inn: str = None) -> Contractor:
+def get_or_create_contractor(
+    session, name: str, inn: str = None, force_update_inn: bool = False
+) -> Contractor:
     normalized_name = normalize_contractor_name(name)
     contractor = (
         session.query(Contractor).filter(Contractor.name == normalized_name).first()
@@ -220,7 +222,7 @@ def get_or_create_contractor(session, name: str, inn: str = None) -> Contractor:
         session.add(contractor)
         session.flush()
     elif inn and inn.strip():
-        if not contractor.inn or not contractor.inn.strip():
+        if force_update_inn or not contractor.inn or not contractor.inn.strip():
             contractor.inn = inn.strip()
     return contractor
 
@@ -662,6 +664,180 @@ async def import_sbis(file: UploadFile = File(...)):
 
                 if row_info["import_status"] == "Импортирован":
                     contractor = get_or_create_contractor(session, contractor_name, inn)
+
+                    act = Act(
+                        number=number,
+                        filename=filename,
+                        signing_date=signing_datetime,
+                        amount=amount,
+                        contractor_id=contractor.id,
+                    )
+                    session.add(act)
+                    added += 1
+
+                rows_detail.append(row_info)
+
+            except Exception as e:
+                row_info = {
+                    "number": "",
+                    "date": "",
+                    "amount": None,
+                    "contractor": "",
+                    "inn": "",
+                    "filename": "",
+                    "doc_type": "",
+                    "status": "",
+                    "import_status": "Ошибка",
+                    "reasons": [f"Ошибка обработки строки: {str(e)}"],
+                }
+                rows_detail.append(row_info)
+
+        session.commit()
+        os.remove(temp_path)
+
+        return {
+            "success": True,
+            "added": added,
+            "skipped_status": skipped_status,
+            "skipped_type": skipped_type,
+            "skipped_empty": skipped_empty,
+            "skipped_duplicate": skipped_duplicate,
+            "rows_detail": rows_detail,
+        }
+    except Exception as e:
+        session.rollback()
+        return {"error": str(e)}
+    finally:
+        session.close()
+
+
+@app.post("/import-sbis-force-inn")
+async def import_sbis_force_inn(file: UploadFile = File(...)):
+    session = get_session()
+    try:
+        content = await file.read()
+        temp_path = os.path.join(os.path.dirname(__file__), "temp_sbis_force.xlsx")
+        with open(temp_path, "wb") as f:
+            f.write(content)
+
+        wb = load_workbook(temp_path)
+        ws = wb.active
+
+        headers = [cell.value for cell in ws[1]]
+        col_map = {}
+        for i, h in enumerate(headers):
+            if h:
+                col_map[h.strip()] = i + 1
+
+        contractor_idx = col_map.get("Контрагент")
+        org_idx = col_map.get("Организация")
+
+        inn_col_idx = None
+        if contractor_idx and org_idx:
+            for i, h in enumerate(headers):
+                if h:
+                    h_stripped = h.strip()
+                    if h_stripped in ["ИНН/КПП", "ИНН / КПП", "ИНН"]:
+                        col_idx = i + 1
+                        if contractor_idx < col_idx < org_idx:
+                            inn_col_idx = col_idx
+                            break
+
+        added = 0
+        skipped_status = 0
+        skipped_type = 0
+        skipped_empty = 0
+        skipped_duplicate = 0
+
+        rows_detail = []
+
+        for row in ws.iter_rows(min_row=2):
+            try:
+                doc_type = str(row[col_map["Тип документа"] - 1].value or "").strip()
+                package_type = str(row[col_map["Тип пакета"] - 1].value or "").strip()
+                status = str(row[col_map["Статус"] - 1].value or "").strip()
+                amount = parse_amount(row[col_map["Сумма"] - 1].value)
+                signing_datetime = parse_datetime(row[col_map["Завершено"] - 1].value)
+                number = str(row[col_map["Номер"] - 1].value or "").strip()
+                contractor_name = str(
+                    row[col_map["Контрагент"] - 1].value or ""
+                ).strip()
+                inn_kpp = ""
+                if inn_col_idx:
+                    inn_kpp = str(row[inn_col_idx - 1].value or "").strip()
+                inn = inn_kpp.split("/")[0] if inn_kpp else ""
+                filename = str(row[col_map["Имя файла"] - 1].value or "").strip()
+
+                row_info = {
+                    "number": number,
+                    "date": signing_datetime.strftime("%d.%m.%Y %H:%M")
+                    if signing_datetime
+                    else "",
+                    "amount": amount,
+                    "contractor": contractor_name,
+                    "inn": inn,
+                    "filename": filename,
+                    "doc_type": doc_type,
+                    "package_type": package_type,
+                    "status": status,
+                    "import_status": "Импортирован",
+                    "reasons": [],
+                }
+
+                if doc_type == "ЭДОСч":
+                    row_info["import_status"] = "Пропущен"
+                    row_info["reasons"].append(f"Тип документа: {doc_type}")
+                    skipped_type += 1
+                elif package_type == "ДокОтгрИсх":
+                    pass
+
+                if status != "Выполнение завершено успешно":
+                    if row_info["import_status"] == "Импортирован":
+                        row_info["import_status"] = "Пропущен"
+                    row_info["reasons"].append(
+                        f"Статус документа: '{status}' (ожидается 'Выполнение завершено успешно')"
+                    )
+                    skipped_status += 1
+
+                if not amount or amount == 0:
+                    if package_type != "ДокОтгрИсх":
+                        if row_info["import_status"] == "Импортирован":
+                            row_info["import_status"] = "Пропущен"
+                        row_info["reasons"].append("Сумма = 0 или пустая")
+                        skipped_empty += 1
+
+                if not signing_datetime:
+                    if row_info["import_status"] == "Импортирован":
+                        row_info["import_status"] = "Пропущен"
+                    row_info["reasons"].append("Дата подписания (Завершено) пустая")
+                    skipped_empty += 1
+
+                is_duplicate = False
+                if number and signing_datetime and amount and amount != 0:
+                    existing = (
+                        session.query(Act)
+                        .filter(
+                            Act.number == number,
+                            Act.signing_date == signing_datetime,
+                            Act.amount == amount,
+                        )
+                        .first()
+                    )
+                    if existing:
+                        is_duplicate = True
+
+                if is_duplicate:
+                    if row_info["import_status"] == "Импортирован":
+                        row_info["import_status"] = "Пропущен"
+                    row_info["reasons"].append(
+                        "Дубликат (акт с такими реквизитами уже существует)"
+                    )
+                    skipped_duplicate += 1
+
+                if row_info["import_status"] == "Импортирован":
+                    contractor = get_or_create_contractor(
+                        session, contractor_name, inn, force_update_inn=True
+                    )
 
                     act = Act(
                         number=number,
