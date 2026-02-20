@@ -1022,7 +1022,9 @@ def get_linked_acts(
             .options(joinedload(Act.contractor), joinedload(Act.invoice))
         )
 
-        if contractor_id and contractor_id.isdigit():
+        if contractor_id == "none":
+            query = query.filter(Act.contractor_id.is_(None))
+        elif contractor_id and contractor_id.isdigit():
             query = query.filter(Act.contractor_id == int(contractor_id))
 
         if responsible_manager:
@@ -1108,7 +1110,9 @@ def get_unlinked_acts(
             .options(joinedload(Act.contractor))
         )
 
-        if contractor_id and contractor_id.isdigit():
+        if contractor_id == "none":
+            query = query.filter(Act.contractor_id.is_(None))
+        elif contractor_id and contractor_id.isdigit():
             query = query.filter(Act.contractor_id == int(contractor_id))
 
         if responsible_manager:
@@ -1302,7 +1306,9 @@ def list_invoices_filtered(
     try:
         query = session.query(Invoice)
 
-        if contractor_id:
+        if contractor_id == "none":
+            query = query.filter(Invoice.contractor_id.is_(None))
+        elif contractor_id:
             query = query.filter(Invoice.contractor_id == contractor_id)
 
         if motivated_person:

@@ -118,8 +118,9 @@
             <div class="row g-3">
                 <div class="col-md-3">
                     <label class="form-label">Контрагент</label>
-                    <select class="form-select" id="filterContractor">
+<select class="form-select" id="filterContractor">
                         <option value="">Все</option>
+                        <option value="none">(без контрагента)</option>
                         {% for contractor in contractors %}
                         <option value="{{ contractor.id }}">{{ format_contractor_name(contractor.name) }}</option>
                         {% endfor %}

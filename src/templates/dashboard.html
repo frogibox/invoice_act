@@ -338,13 +338,13 @@
                 });
         }
         
-        function loadContractors() {
+function loadContractors() {
             fetch('/contractors/list')
                 .then(r => r.json())
                 .then(data => {
                     contractors = data.sort((a, b) => a.name.localeCompare(b.name));
                     const contractorSelect = document.getElementById('filterContractor');
-                    contractorSelect.innerHTML = '<option value="">Все</option>';
+                    contractorSelect.innerHTML = '<option value="">Все</option><option value="none">Без контрагента</option>';
                     contractors.forEach(c => {
                         const option = document.createElement('option');
                         option.value = c.id;
