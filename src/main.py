@@ -2124,9 +2124,9 @@ def bulk_delete_contractors(data: Dict[str, Any] = Body(...)):
             )
             if contractor:
                 for act in contractor.acts:
-                    act.contractor_id = None
+                    session.delete(act)
                 for invoice in contractor.invoices:
-                    invoice.contractor_id = None
+                    session.delete(invoice)
                 session.delete(contractor)
                 deleted += 1
 

@@ -575,7 +575,7 @@
             if (selectedContractors.size === 0) return;
             
             document.getElementById('bulkDeleteMessage').textContent = 
-                'Вы уверены, что хотите удалить ' + selectedContractors.size + ' контрагент(а/ов)? Связанные счета и акты будут отвязаны.';
+                'Вы уверены, что хотите удалить ' + selectedContractors.size + ' контрагент(а/ов)? Все связанные счета и акты также будут удалены!';
             const modal = new bootstrap.Modal(document.getElementById('bulkDeleteModal'));
             modal.show();
         }
