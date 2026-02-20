@@ -1513,6 +1513,114 @@ def add_contractor(name: str = Form(...), inn: Optional[str] = Form(None)):
         session.close()
 
 
+@app.get("/act/add", response_class=HTMLResponse)
+def add_act_page(request: Request):
+    session = get_session()
+    try:
+        employees = session.query(Employee).order_by(Employee.last_name).all()
+        invoices = (
+            session.query(Invoice, Contractor)
+            .join(Contractor, Invoice.contractor_id == Contractor.id)
+            .order_by(Invoice.date.desc())
+            .all()
+        )
+        invoices_list = [
+            {
+                "id": inv.id,
+                "number": inv.number,
+                "date": inv.date.strftime("%d.%m.%Y") if inv.date else "",
+                "contractor_name": contractor.name,
+            }
+            for inv, contractor in invoices
+        ]
+    finally:
+        session.close()
+    return templates.TemplateResponse(
+        "act_add.html",
+        {"request": request, "employees": employees, "invoices": invoices_list},
+    )
+
+
+@app.get("/contractor/by-name/{name}")
+def get_contractor_by_name(name: str):
+    session = get_session()
+    try:
+        normalized_name = normalize_contractor_name(name)
+        contractor = (
+            session.query(Contractor).filter(Contractor.name == normalized_name).first()
+        )
+        if contractor:
+            return {
+                "found": True,
+                "contractor": {
+                    "id": contractor.id,
+                    "name": contractor.name,
+                    "inn": contractor.inn,
+                },
+            }
+        return {"found": False}
+    finally:
+        session.close()
+
+
+@app.post("/act/add")
+def add_act(
+    number: str = Form(...),
+    contractor_name: Optional[str] = Form(None),
+    inn: Optional[str] = Form(None),
+    signing_date: Optional[str] = Form(None),
+    amount: Optional[str] = Form(None),
+    responsible_manager: Optional[str] = Form(None),
+    invoice_id: Optional[str] = Form(None),
+):
+    session = get_session()
+    try:
+        contractor = None
+        if contractor_name and contractor_name.strip():
+            normalized_name = normalize_contractor_name(contractor_name.strip())
+            contractor = (
+                session.query(Contractor)
+                .filter(Contractor.name == normalized_name)
+                .first()
+            )
+            if not contractor:
+                inn_value = inn.strip() if inn and inn.strip() else None
+                contractor = Contractor(name=normalized_name, inn=inn_value)
+                session.add(contractor)
+                session.flush()
+            elif inn and inn.strip() and contractor.inn != inn.strip():
+                contractor.inn = inn.strip()
+
+        parsed_date = parse_datetime(signing_date) if signing_date else None
+        parsed_amount = parse_amount(amount) if amount else None
+
+        invoice_id_int = None
+        if invoice_id and invoice_id.strip():
+            try:
+                invoice_id_int = int(invoice_id)
+            except ValueError:
+                pass
+
+        act = Act(
+            number=number.strip() if number else "",
+            signing_date=parsed_date,
+            amount=parsed_amount or 0,
+            contractor_id=contractor.id if contractor else None,
+            responsible_manager=responsible_manager
+            if responsible_manager and responsible_manager.strip()
+            else None,
+            invoice_id=invoice_id_int,
+        )
+        session.add(act)
+        session.commit()
+        return {"success": True, "id": act.id}
+    except Exception as e:
+        session.rollback()
+        return {"success": False, "error": str(e)}
+    finally:
+        session.close()
+
+
 @app.post("/contractor/update-inn/{contractor_id}")
 def update_contractor_inn(contractor_id: int, inn: Optional[str] = Form(None)):
     session = get_session()
