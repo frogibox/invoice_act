@@ -426,12 +426,27 @@
 
         let pendingDeleteId = null;
         let deleteModal = null;
+        let settings = {};
 
         document.addEventListener('DOMContentLoaded', function() {
             deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            loadSettings();
         });
 
+        function loadSettings() {
+            fetch('/settings/data')
+                .then(r => r.json())
+                .then(data => {
+                    settings = data;
+                });
+        }
+
         function confirmDeleteContractor(contractorId, invoicesCount, linkedActs, freeActs) {
+            if (settings.skip_contractor_delete_question === 'true' && settings.contractor_delete_action) {
+                executeDelete(contractorId, settings.contractor_delete_action);
+                return;
+            }
+            
             pendingDeleteId = contractorId;
             document.getElementById('deleteQuestion').textContent = `У контрагента: ${invoicesCount} счет(ов), ${linkedActs} привязанных актов(ов), ${freeActs} свободных актов(ов). Что сделать с ними?`;
             document.getElementById('dontShowAgain').checked = false;
@@ -442,21 +457,11 @@
             pendingDeleteId = null;
         }
 
-        function deleteWithAction(action) {
-            const dontShow = document.getElementById('dontShowAgain').checked;
-            if (dontShow && pendingDeleteId) {
-                const formData = new FormData();
-                formData.append('skip_delete_question', 'true');
-                formData.append('delete_action', action);
-                fetch('/settings/save', { method: 'POST', body: formData });
-            }
-            
-            if (!pendingDeleteId) return;
-            
+        function executeDelete(contractorId, action) {
             const formData = new FormData();
             formData.append('action', action);
             
-            fetch(`/contractor/delete/${pendingDeleteId}`, {
+            fetch(`/contractor/delete/${contractorId}`, {
                 method: 'POST',
                 body: formData
             })
@@ -470,11 +475,32 @@
             })
             .catch(err => {
                 alert('Ошибка удаления контрагента');
-            })
-            .finally(() => {
-                pendingDeleteId = null;
-                deleteModal.hide();
             });
+        }
+
+        function deleteWithAction(action) {
+            const dontShow = document.getElementById('dontShowAgain').checked;
+            const contractorId = pendingDeleteId;
+            
+            if (dontShow && contractorId) {
+                const formData = new FormData();
+                formData.append('skip_delete_question', 'true');
+                formData.append('delete_action', action);
+                fetch('/settings/save', { method: 'POST', body: formData })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            settings.skip_contractor_delete_question = 'true';
+                            settings.contractor_delete_action = action;
+                        }
+                        executeDelete(contractorId, action);
+                    });
+            } else {
+                executeDelete(contractorId, action);
+            }
+            
+            pendingDeleteId = null;
+            deleteModal.hide();
         }
 
         loadContractors();
