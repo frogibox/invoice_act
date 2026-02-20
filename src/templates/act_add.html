@@ -52,8 +52,8 @@
         
         <div class="settings-card">
             <div class="mb-3">
-                <label class="form-label">№ акта *</label>
-                <input type="text" class="form-control" id="numberInput" placeholder="Введите номер акта" required>
+                <label class="form-label">№ акта</label>
+                <input type="text" class="form-control" id="numberInput" placeholder="Введите номер акта">
             </div>
             
             <div class="mb-3">
@@ -180,12 +180,6 @@
             const amount = document.getElementById('amountInput').value;
             const responsible = document.getElementById('responsibleInput').value;
             const invoiceId = document.getElementById('invoiceInput').value;
-            
-            if (!number) {
-                resultMessage.innerHTML = '<div class="alert alert-danger">Введите номер акта</div>';
-                resultMessage.style.display = 'block';
-                return;
-            }
             
             const formData = new FormData();
             formData.append('number', number);
