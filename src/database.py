@@ -45,6 +45,13 @@ class StopWord(Base):
     word = Column(Text, unique=True)
 
 
+class Settings(Base):
+    __tablename__ = "settings"
+    id = Column(Integer, primary_key=True)
+    key = Column(Text, unique=True)
+    value = Column(Text)
+
+
 class Invoice(Base):
     __tablename__ = "invoices"
     id = Column(Integer, primary_key=True)

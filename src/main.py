@@ -11,7 +11,16 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import joinedload
 from openpyxl import load_workbook
 
-from .database import get_session, init_db, Contractor, Employee, StopWord, Invoice, Act
+from .database import (
+    get_session,
+    init_db,
+    Contractor,
+    Employee,
+    StopWord,
+    Invoice,
+    Act,
+    Settings,
+)
 
 from workalendar.europe import Russia
 
@@ -1533,5 +1542,103 @@ def list_contractors_full():
                 }
             )
         return result
+    finally:
+        session.close()
+
+
+@app.get("/settings", response_class=HTMLResponse)
+def settings_page(request: Request):
+    session = get_session()
+    try:
+        settings = {s.key: s.value for s in session.query(Settings).all()}
+    finally:
+        session.close()
+    return templates.TemplateResponse(
+        "settings.html", {"request": request, "settings": settings}
+    )
+
+
+@app.post("/settings/save")
+def save_settings(
+    skip_delete_question: Optional[str] = Form(None),
+    delete_action: Optional[str] = Form(None),
+):
+    session = get_session()
+    try:
+        skip_value = "true" if skip_delete_question else "false"
+        setting = (
+            session.query(Settings)
+            .filter(Settings.key == "skip_contractor_delete_question")
+            .first()
+        )
+        if setting:
+            setting.value = skip_value
+        else:
+            setting = Settings(key="skip_contractor_delete_question", value=skip_value)
+            session.add(setting)
+
+        delete_action_value = delete_action if delete_action else ""
+        setting2 = (
+            session.query(Settings)
+            .filter(Settings.key == "contractor_delete_action")
+            .first()
+        )
+        if setting2:
+            setting2.value = delete_action_value
+        else:
+            setting2 = Settings(
+                key="contractor_delete_action", value=delete_action_value
+            )
+            session.add(setting2)
+
+        session.commit()
+        return {"success": True}
+    except Exception as e:
+        session.rollback()
+        return {"error": str(e), "success": False}
+    finally:
+        session.close()
+
+
+@app.get("/settings/data")
+def get_settings():
+    session = get_session()
+    try:
+        settings = {s.key: s.value for s in session.query(Settings).all()}
+        return settings
+    finally:
+        session.close()
+
+
+@app.post("/contractor/delete/{contractor_id}")
+def delete_contractor(contractor_id: int, action: Optional[str] = Form(None)):
+    session = get_session()
+    try:
+        contractor = (
+            session.query(Contractor).filter(Contractor.id == contractor_id).first()
+        )
+        if not contractor:
+            return {"error": "Контрагент не найден", "success": False}
+
+        if action == "delete":
+            for act in contractor.acts:
+                session.delete(act)
+            for invoice in contractor.invoices:
+                session.delete(invoice)
+            session.delete(contractor)
+        elif action == "keep":
+            for act in contractor.acts:
+                act.contractor_id = None
+            for invoice in contractor.invoices:
+                invoice.contractor_id = None
+            session.delete(contractor)
+        else:
+            return {"error": "Неверное действие", "success": False}
+
+        session.commit()
+        return {"success": True}
+    except Exception as e:
+        session.rollback()
+        return {"error": str(e), "success": False}
     finally:
         session.close()

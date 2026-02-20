@@ -135,6 +135,7 @@
                 <a class="nav-link" href="/unlinked-acts">Свободные акты</a>
                 <a class="nav-link" href="/import">Импорт и Настройки</a>
                 <a class="nav-link" href="/employees">Сотрудники</a>
+                <a class="nav-link" href="/settings">Настройки</a>
             </div>
         </div>
     </nav>
@@ -157,18 +158,43 @@
         </div>
         
         <div class="table-wrapper">
-            <div class="data-header" style="--cols: minmax(200px, 3fr) minmax(120px, 1fr) minmax(80px, 0.7fr) minmax(120px, 1fr) minmax(120px, 1fr);">
+            <div class="data-header" style="--cols: minmax(200px, 3fr) minmax(120px, 1fr) minmax(80px, 0.7fr) minmax(120px, 1fr) minmax(120px, 1fr) minmax(100px, 0.8fr);">
                 <div class="data-cell sortable sort-asc" data-sort="name" onclick="sortBy('name')">Контрагент</div>
                 <div class="data-cell sortable" data-sort="inn" onclick="sortBy('inn')">ИНН</div>
                 <div class="data-cell sortable" data-sort="invoices_count" onclick="sortBy('invoices_count')">Счета</div>
                 <div class="data-cell sortable" data-sort="linked_acts_count" onclick="sortBy('linked_acts_count')">Привязанные акты</div>
                 <div class="data-cell sortable" data-sort="free_acts_count" onclick="sortBy('free_acts_count')">Свободные акты</div>
+                <div class="data-cell">Действия</div>
             </div>
-            <div class="data-table" id="contractorsTable" style="--cols: minmax(200px, 3fr) minmax(120px, 1fr) minmax(80px, 0.7fr) minmax(120px, 1fr) minmax(120px, 1fr);">
+            <div class="data-table" id="contractorsTable" style="--cols: minmax(200px, 3fr) minmax(120px, 1fr) minmax(80px, 0.7fr) minmax(120px, 1fr) minmax(120px, 1fr) minmax(100px, 0.8fr);">
                 <div id="contractorsBody"></div>
             </div>
         </div>
         <div class="pagination-bar" id="paginationBar"></div>
+    </div>
+
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Удаление контрагента</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="deleteQuestion">Выберите действие со счетами и актами контрагента:</p>
+                    <p class="text-muted" id="deleteWarning">Если выбрать "Оставить", то счета и акты останутся в системе без привязки к контрагенту.</p>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="dontShowAgain">
+                        <label class="form-check-label" for="dontShowAgain">Больше не показывать это окно</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="cancelDelete()">Отменить</button>
+                    <button type="button" class="btn btn-warning" onclick="deleteWithAction('keep')">Оставить</button>
+                    <button type="button" class="btn btn-danger" onclick="deleteWithAction('delete')">Удалить</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="/static/js/bootstrap.bundle.min.js"></script>
@@ -283,6 +309,7 @@
                     <div class="data-cell">${c.invoices_count}</div>
                     <div class="data-cell">${c.linked_acts_count}</div>
                     <div class="data-cell">${c.free_acts_count}</div>
+                    <div class="data-cell"><button class="btn btn-sm btn-danger" onclick="confirmDeleteContractor(${c.id}, ${c.invoices_count}, ${c.linked_acts_count}, ${c.free_acts_count})">Удалить</button></div>
                 `;
                 wrapper.appendChild(row);
                 body.appendChild(wrapper);
@@ -394,6 +421,59 @@
             })
             .finally(() => {
                 input.classList.remove('saving');
+            });
+        }
+
+        let pendingDeleteId = null;
+        let deleteModal = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+        });
+
+        function confirmDeleteContractor(contractorId, invoicesCount, linkedActs, freeActs) {
+            pendingDeleteId = contractorId;
+            document.getElementById('deleteQuestion').textContent = `У контрагента: ${invoicesCount} счет(ов), ${linkedActs} привязанных актов(ов), ${freeActs} свободных актов(ов). Что сделать с ними?`;
+            document.getElementById('dontShowAgain').checked = false;
+            deleteModal.show();
+        }
+
+        function cancelDelete() {
+            pendingDeleteId = null;
+        }
+
+        function deleteWithAction(action) {
+            const dontShow = document.getElementById('dontShowAgain').checked;
+            if (dontShow && pendingDeleteId) {
+                const formData = new FormData();
+                formData.append('skip_delete_question', 'true');
+                formData.append('delete_action', action);
+                fetch('/settings/save', { method: 'POST', body: formData });
+            }
+            
+            if (!pendingDeleteId) return;
+            
+            const formData = new FormData();
+            formData.append('action', action);
+            
+            fetch(`/contractor/delete/${pendingDeleteId}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    loadContractors();
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Не удалось удалить контрагента'));
+                }
+            })
+            .catch(err => {
+                alert('Ошибка удаления контрагента');
+            })
+            .finally(() => {
+                pendingDeleteId = null;
+                deleteModal.hide();
             });
         }
 
