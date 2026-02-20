@@ -32,3 +32,8 @@ dev = [
     "requests>=2.32.5",
     "ruff>=0.15.1",
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "e2e: end-to-end tests requiring running server",
+]
