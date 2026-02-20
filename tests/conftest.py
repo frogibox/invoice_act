@@ -33,6 +33,7 @@ def test_session(test_engine):
     TestingSessionLocal = sessionmaker(bind=test_engine)
     session = TestingSessionLocal()
     yield session
+    session.rollback()
     session.close()
 
 

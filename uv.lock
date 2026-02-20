@@ -467,6 +467,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-html" },
     { name = "pytest-playwright" },
+    { name = "requests" },
     { name = "ruff" },
 ]
 
@@ -490,6 +491,7 @@ dev = [
     { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "pytest-html", specifier = ">=4.2.0" },
     { name = "pytest-playwright", specifier = ">=0.7.2" },
+    { name = "requests", specifier = ">=2.32.5" },
     { name = "ruff", specifier = ">=0.15.1" },
 ]
 
