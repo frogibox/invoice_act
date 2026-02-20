@@ -63,3 +63,7 @@ temp_*
 
 # Project specific
 ignore_me/
+
+# Test results
+tests_result/
+.coverage

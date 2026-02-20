@@ -3,8 +3,8 @@ echo ===================================================
 echo RUNNING E2E TESTS WITH REPORT...
 echo ===================================================
 
-echo Creating reports directory...
-if not exist "e2e_reports" mkdir e2e_reports
+echo Creating tests_result directory...
+if not exist "tests_result\e2e" mkdir tests_result\e2e
 
 echo Starting backend on port 10000...
 start /B uv run uvicorn src.main:app --host 127.0.0.1 --port 10000 > server.log 2>&1
@@ -20,7 +20,7 @@ if errorlevel 1 (
 echo Server is ready!
 
 echo Running E2E tests with report...
-uv run pytest e2e/ --html=e2e_reports/e2e_report.html --self-contained-html --tb=short
+uv run pytest e2e/ --html=tests_result/e2e/report.html --self-contained-html --tb=short
 
 echo Stopping server on port 10000...
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr :10000 ^| findstr LISTENING') do taskkill /PID %%a /F >nul 2>&1
@@ -28,6 +28,6 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :10000 ^| findstr LISTENING')
 echo.
 echo ===================================================
 echo DONE.
-echo Report saved to: e2e_reports/e2e_report.html
+echo Report saved to: tests_result\e2e\report.html
 echo ===================================================
 pause
