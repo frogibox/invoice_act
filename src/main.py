@@ -219,6 +219,9 @@ def get_or_create_contractor(session, name: str, inn: str = None) -> Contractor:
         contractor = Contractor(name=normalized_name, inn=inn)
         session.add(contractor)
         session.flush()
+    elif inn and inn.strip():
+        if not contractor.inn or not contractor.inn.strip():
+            contractor.inn = inn.strip()
     return contractor
 
 
@@ -552,6 +555,12 @@ async def import_sbis(file: UploadFile = File(...)):
             if h:
                 col_map[h.strip()] = i + 1
 
+        inn_col_name = None
+        for name in ["ИНН/КПП", "ИНН / КПП", "ИНН", "Инн/Кпп"]:
+            if name in col_map:
+                inn_col_name = name
+                break
+
         added = 0
         skipped_status = 0
         skipped_type = 0
@@ -571,7 +580,9 @@ async def import_sbis(file: UploadFile = File(...)):
                 contractor_name = str(
                     row[col_map["Контрагент"] - 1].value or ""
                 ).strip()
-                inn_kpp = str(row[col_map["ИНН/КПП"] - 1].value or "").strip()
+                inn_kpp = ""
+                if inn_col_name:
+                    inn_kpp = str(row[col_map[inn_col_name] - 1].value or "").strip()
                 inn = inn_kpp.split("/")[0] if inn_kpp else ""
                 filename = str(row[col_map["Имя файла"] - 1].value or "").strip()
 
