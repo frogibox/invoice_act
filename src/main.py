@@ -1614,9 +1614,12 @@ def add_act(
         session.add(act)
         session.commit()
         return {"success": True, "id": act.id}
+    except ValueError as e:
+        session.rollback()
+        return {"success": False, "error": f"Ошибка ввода данных: {str(e)}"}
     except Exception as e:
         session.rollback()
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Ошибка при добавлении акта: {str(e)}"}
     finally:
         session.close()
 
