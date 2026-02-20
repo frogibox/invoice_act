@@ -173,14 +173,17 @@
                     <label class="form-label">Дата оплаты по</label>
                     <input type="date" class="form-control" id="filterDateTo">
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
+                <div class="col-md-1 d-flex align-items-end">
                     <button class="btn btn-primary w-100" onclick="loadInvoices()">Применить</button>
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button class="btn btn-danger w-100" id="bulkDeleteBtn" onclick="confirmBulkDeleteInvoices()" disabled>Удалить</button>
                 </div>
             </div>
         </div>
         
         <div class="table-wrapper">
-            <div class="data-header" style="--cols: 26px 6px minmax(60px, 0.8fr) minmax(90px, 1fr) minmax(120px, 3fr) minmax(120px, 2fr) minmax(80px, 1fr) minmax(115px, 1.2fr) minmax(115px, 1.2fr) minmax(45px, 0.5fr) minmax(110px, 1.3fr) minmax(140px, 1.8fr) minmax(70px, 0.8fr) minmax(85px, 0.8fr) 36px;">
+            <div class="data-header" style="--cols: 26px 6px minmax(60px, 0.8fr) minmax(90px, 1fr) minmax(120px, 3fr) minmax(120px, 2fr) minmax(80px, 1fr) minmax(115px, 1.2fr) minmax(115px, 1.2fr) minmax(45px, 0.5fr) minmax(110px, 1.3fr) minmax(140px, 1.8fr) minmax(70px, 0.8fr) minmax(85px, 0.8fr) 36px 30px;">
                     <div class="data-cell"></div>
                     <div class="data-cell"></div>
                     <div class="data-cell">№ счета</div>
@@ -196,8 +199,9 @@
                     <div class="data-cell sortable" data-sort="acts_count" onclick="sortBy('acts_count')">Акты</div>
                     <div class="data-cell sortable wrap-header" data-sort="free_acts_count" onclick="sortBy('free_acts_count')">Свободные акты</div>
                     <div class="data-cell"></div>
+                    <div class="data-cell"><input type="checkbox" id="selectAllInvoices" onchange="toggleSelectAll()"></div>
             </div>
-            <div class="data-table" id="invoicesTable" style="--cols: 26px 6px minmax(60px, 0.8fr) minmax(90px, 1fr) minmax(120px, 3fr) minmax(120px, 2fr) minmax(80px, 1fr) minmax(115px, 1.2fr) minmax(115px, 1.2fr) minmax(45px, 0.5fr) minmax(110px, 1.3fr) minmax(140px, 1.8fr) minmax(70px, 0.8fr) minmax(85px, 0.8fr) 36px;">
+            <div class="data-table" id="invoicesTable" style="--cols: 26px 6px minmax(60px, 0.8fr) minmax(90px, 1fr) minmax(120px, 3fr) minmax(120px, 2fr) minmax(80px, 1fr) minmax(115px, 1.2fr) minmax(115px, 1.2fr) minmax(45px, 0.5fr) minmax(110px, 1.3fr) minmax(140px, 1.8fr) minmax(70px, 0.8fr) minmax(85px, 0.8fr) 36px 30px;">
                 <div id="invoicesBody"></div>
             </div>
         </div>
@@ -217,6 +221,24 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                     <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Удалить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="bulkDeleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Подтверждение массового удаления</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="bulkDeleteMessage"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-danger" id="confirmBulkDeleteBtn">Удалить</button>
                 </div>
             </div>
         </div>
@@ -251,6 +273,7 @@
         let allInvoices = [];
         let pageSize = 12;
         let currentPage = 1;
+        let selectedInvoices = new Set();
         
         function toggleActs(invoiceId, contractorId) {
             const nested = document.getElementById('nested-' + invoiceId);
@@ -486,6 +509,8 @@ function loadContractors() {
         function renderInvoices(invoices) {
             const body = document.getElementById('invoicesBody');
             body.innerHTML = '';
+            selectedInvoices.clear();
+            updateBulkDeleteBtn();
             
 invoices.forEach(inv => {
                 const wrapper = document.createElement('div');
@@ -541,6 +566,7 @@ invoices.forEach(inv => {
                     <div class="data-cell">${inv.acts_count ? inv.acts_count + ' (' + inv.acts_sum.toFixed(2) + ')' : '-'}</div>
                     <div class="data-cell">${inv.free_acts_count > 0 ? inv.free_acts_count : '-'}</div>
                     <div class="data-cell data-cell-btn"><button class="btn btn-sm btn-danger" onclick="confirmDeleteInvoice(${inv.id}, '${inv.number}')">X</button></div>
+                    <div class="data-cell"><input type="checkbox" class="invoice-checkbox" data-invoice-id="${inv.id}" onchange="toggleInvoiceCheckbox(${inv.id})"></div>
                 `;
                 wrapper.appendChild(row);
                 
@@ -730,6 +756,77 @@ invoices.forEach(inv => {
                         alert('Ошибка удаления: ' + (result.error || 'Unknown error'));
                     }
                 });
+        }
+        
+        function toggleSelectAll() {
+            const selectAllCheckbox = document.getElementById('selectAllInvoices');
+            const checkboxes = document.querySelectorAll('.invoice-checkbox');
+            
+            if (selectAllCheckbox.checked) {
+                checkboxes.forEach(cb => {
+                    cb.checked = true;
+                    selectedInvoices.add(parseInt(cb.dataset.invoiceId));
+                });
+            } else {
+                checkboxes.forEach(cb => {
+                    cb.checked = false;
+                });
+                selectedInvoices.clear();
+            }
+            updateBulkDeleteBtn();
+        }
+        
+        function toggleInvoiceCheckbox(invoiceId) {
+            if (selectedInvoices.has(invoiceId)) {
+                selectedInvoices.delete(invoiceId);
+            } else {
+                selectedInvoices.add(invoiceId);
+            }
+            updateBulkDeleteBtn();
+            updateSelectAllCheckbox();
+        }
+        
+        function updateBulkDeleteBtn() {
+            const btn = document.getElementById('bulkDeleteBtn');
+            btn.disabled = selectedInvoices.size === 0;
+        }
+        
+        function updateSelectAllCheckbox() {
+            const selectAllCheckbox = document.getElementById('selectAllInvoices');
+            const checkboxes = document.querySelectorAll('.invoice-checkbox');
+            selectAllCheckbox.checked = checkboxes.length > 0 && selectedInvoices.size === checkboxes.length;
+        }
+        
+        function confirmBulkDeleteInvoices() {
+            if (selectedInvoices.size === 0) return;
+            
+            document.getElementById('bulkDeleteMessage').textContent = 
+                'Вы уверены, что хотите удалить ' + selectedInvoices.size + ' счет(а/ов)?';
+            const modal = new bootstrap.Modal(document.getElementById('bulkDeleteModal'));
+            modal.show();
+        }
+        
+        document.getElementById('confirmBulkDeleteBtn').onclick = function() {
+            bulkDeleteInvoices();
+            bootstrap.Modal.getInstance(document.getElementById('bulkDeleteModal')).hide();
+        };
+        
+        function bulkDeleteInvoices() {
+            const ids = Array.from(selectedInvoices);
+            fetch('/invoices/bulk-delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: ids })
+            })
+            .then(r => r.json())
+            .then(result => {
+                if (result.success) {
+                    selectedInvoices.clear();
+                    loadInvoices();
+                } else {
+                    alert('Ошибка удаления: ' + (result.error || 'Unknown error'));
+                }
+            });
         }
         
         loadEmployees();

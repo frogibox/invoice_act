@@ -151,11 +151,14 @@
                 <div class="col-md-2 d-flex align-items-end">
                     <a href="/act/add" class="btn btn-success w-100">Добавить акт</a>
                 </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button class="btn btn-danger w-100" id="bulkDeleteBtn" onclick="confirmBulkDeleteActs()" disabled>Удалить</button>
+                </div>
             </div>
         </div>
         
         <div class="table-wrapper">
-            <div class="data-header" style="--cols: minmax(70px, 0.8fr) minmax(120px, 3fr) minmax(85px, 0.9fr) minmax(100px, 1fr) minmax(80px, 0.8fr) minmax(130px, 1.5fr) minmax(130px, 2fr) minmax(160px, 1.5fr);">
+            <div class="data-header" style="--cols: minmax(70px, 0.8fr) minmax(120px, 3fr) minmax(85px, 0.9fr) minmax(100px, 1fr) minmax(80px, 0.8fr) minmax(130px, 1.5fr) minmax(130px, 2fr) minmax(160px, 1.5fr) 30px;">
                     <div class="data-cell sortable" data-sort="number" onclick="sortBy('number')">№ акта</div>
                     <div class="data-cell sortable" data-sort="contractor_name" onclick="sortBy('contractor_name')">Контрагент</div>
                     <div class="data-cell sortable" data-sort="contractor_inn" onclick="sortBy('contractor_inn')">ИНН</div>
@@ -164,8 +167,9 @@
                     <div class="data-cell sortable" data-sort="responsible_manager" onclick="sortBy('responsible_manager')">Ответственный менеджер</div>
                     <div class="data-cell sortable" data-sort="has_available_invoices" onclick="sortBy('has_available_invoices')">Привязать к счету</div>
                     <div class="data-cell">Действия</div>
+                    <div class="data-cell"><input type="checkbox" id="selectAllActs" onchange="toggleSelectAll()"></div>
             </div>
-            <div class="data-table" style="--cols: minmax(70px, 0.8fr) minmax(120px, 3fr) minmax(85px, 0.9fr) minmax(100px, 1fr) minmax(80px, 0.8fr) minmax(130px, 1.5fr) minmax(130px, 2fr) minmax(160px, 1.5fr);">
+            <div class="data-table" style="--cols: minmax(70px, 0.8fr) minmax(120px, 3fr) minmax(85px, 0.9fr) minmax(100px, 1fr) minmax(80px, 0.8fr) minmax(130px, 1.5fr) minmax(130px, 2fr) minmax(160px, 1.5fr) 30px;">
                 <div id="unlinkedActsBody"></div>
             </div>
         </div>
@@ -185,6 +189,24 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                     <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Удалить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="bulkDeleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Подтверждение массового удаления</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="bulkDeleteMessage"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-danger" id="confirmBulkDeleteBtn">Удалить</button>
                 </div>
             </div>
         </div>
@@ -211,6 +233,7 @@
         let pageSize = 12;
         let currentPage = 1;
         let currentSort = { field: 'signing_date', direction: 'desc' };
+        let selectedActs = new Set();
         
         function sortBy(field) {
             if (currentSort.field === field) {
@@ -317,6 +340,8 @@
         function renderUnlinkedActs(acts) {
             const body = document.getElementById('unlinkedActsBody');
             body.innerHTML = '';
+            selectedActs.clear();
+            updateBulkDeleteBtn();
 
             if (acts.length === 0 && allActs.length === 0) {
                 const wrapper = document.createElement('div');
@@ -376,6 +401,7 @@
                             <button class="btn btn-sm btn-danger" onclick="confirmDeleteAct(${act.id}, '${act.number}')">Удалить</button>
                         </div>
                     </div>
+                    <div class="data-cell"><input type="checkbox" class="act-checkbox" data-act-id="${act.id}" onchange="toggleActCheckbox(${act.id})"></div>
                 `;
                 wrapper.appendChild(row);
                 body.appendChild(wrapper);
@@ -474,6 +500,77 @@
                         }
                     });
             };
+        }
+        
+        function toggleSelectAll() {
+            const selectAllCheckbox = document.getElementById('selectAllActs');
+            const checkboxes = document.querySelectorAll('.act-checkbox');
+            
+            if (selectAllCheckbox.checked) {
+                checkboxes.forEach(cb => {
+                    cb.checked = true;
+                    selectedActs.add(parseInt(cb.dataset.actId));
+                });
+            } else {
+                checkboxes.forEach(cb => {
+                    cb.checked = false;
+                });
+                selectedActs.clear();
+            }
+            updateBulkDeleteBtn();
+        }
+        
+        function toggleActCheckbox(actId) {
+            if (selectedActs.has(actId)) {
+                selectedActs.delete(actId);
+            } else {
+                selectedActs.add(actId);
+            }
+            updateBulkDeleteBtn();
+            updateSelectAllCheckbox();
+        }
+        
+        function updateBulkDeleteBtn() {
+            const btn = document.getElementById('bulkDeleteBtn');
+            btn.disabled = selectedActs.size === 0;
+        }
+        
+        function updateSelectAllCheckbox() {
+            const selectAllCheckbox = document.getElementById('selectAllActs');
+            const checkboxes = document.querySelectorAll('.act-checkbox');
+            selectAllCheckbox.checked = checkboxes.length > 0 && selectedActs.size === checkboxes.length;
+        }
+        
+        function confirmBulkDeleteActs() {
+            if (selectedActs.size === 0) return;
+            
+            document.getElementById('bulkDeleteMessage').textContent = 
+                'Вы уверены, что хотите удалить ' + selectedActs.size + ' акт(а/ов)?';
+            const modal = new bootstrap.Modal(document.getElementById('bulkDeleteModal'));
+            modal.show();
+        }
+        
+        document.getElementById('confirmBulkDeleteBtn').onclick = function() {
+            bulkDeleteActs();
+            bootstrap.Modal.getInstance(document.getElementById('bulkDeleteModal')).hide();
+        };
+        
+        function bulkDeleteActs() {
+            const ids = Array.from(selectedActs);
+            fetch('/acts/bulk-delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: ids })
+            })
+            .then(r => r.json())
+            .then(result => {
+                if (result.success) {
+                    selectedActs.clear();
+                    loadUnlinkedActs();
+                } else {
+                    alert('Ошибка удаления: ' + (result.error || 'Unknown error'));
+                }
+            });
         }
 
         loadEmployees().then(loadInvoices).then(loadUnlinkedActs);

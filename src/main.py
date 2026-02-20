@@ -1004,6 +1004,30 @@ def delete_act(act_id: int):
         session.close()
 
 
+@app.post("/acts/bulk-delete")
+def bulk_delete_acts(data: Dict[str, Any] = Body(...)):
+    session = get_session()
+    try:
+        ids = data.get("ids", [])
+        if not ids:
+            return {"error": "Не указаны ID актов", "success": False}
+
+        deleted = 0
+        for act_id in ids:
+            act = session.query(Act).filter(Act.id == act_id).first()
+            if act:
+                session.delete(act)
+                deleted += 1
+
+        session.commit()
+        return {"success": True, "deleted": deleted}
+    except Exception as e:
+        session.rollback()
+        return {"error": str(e), "success": False}
+    finally:
+        session.close()
+
+
 @app.post("/invoice/delete/{invoice_id}")
 def delete_invoice(invoice_id: int):
     session = get_session()
@@ -1014,6 +1038,30 @@ def delete_invoice(invoice_id: int):
             session.commit()
             return {"success": True}
         return {"error": "Счёт не найден", "success": False}
+    except Exception as e:
+        session.rollback()
+        return {"error": str(e), "success": False}
+    finally:
+        session.close()
+
+
+@app.post("/invoices/bulk-delete")
+def bulk_delete_invoices(data: Dict[str, Any] = Body(...)):
+    session = get_session()
+    try:
+        ids = data.get("ids", [])
+        if not ids:
+            return {"error": "Не указаны ID счетов", "success": False}
+
+        deleted = 0
+        for invoice_id in ids:
+            invoice = session.query(Invoice).filter(Invoice.id == invoice_id).first()
+            if invoice:
+                session.delete(invoice)
+                deleted += 1
+
+        session.commit()
+        return {"success": True, "deleted": deleted}
     except Exception as e:
         session.rollback()
         return {"error": str(e), "success": False}
